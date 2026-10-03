@@ -1,0 +1,11 @@
+{
+  "question": "does low SR PSNR predict a tile carrying >=1 box judged not_ship",
+  "n_tiles": 150,
+  "tiles_with_invention": 21,
+  "auc_low_psnr_predicts_invention": 0.5946843853820598,
+  "mannwhitney_p": 0.1655770004885262,
+  "spearman_rho": -0.11170060624679974,
+  "spearman_p": 0.17355607359530442,
+  "confound_spearman_rho_psnr_vs_labelled_object_count": -0.43693526078614947,
+  "confound_spearman_p": 2.268889334045978e-08
+}
