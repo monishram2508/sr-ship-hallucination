@@ -1,0 +1,26 @@
+# DOTA v1.0 is licensed for academic / non-commercial use only and is not redistributed here.
+data/
+weights/
+yolov8s-obb.pt
+
+# working notes and the private one-page report are not part of the public repo
+CLAUDE.md
+LOG.md
+notes.pages
+results/report.pdf
+results/report.html
+results/_report_tmp.html
+
+# DOTA-derived imagery: only the figures the README uses are tracked
+results/figures/invented/
+results/figures/audit/crops/
+results/figures/audit/crops_pass2/
+results/figures/audit/sheet_*.png
+results/figures/sanity_*.png
+results/figures/smoke_*.png
+results/ultralytics/
+
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
