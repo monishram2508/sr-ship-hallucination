@@ -1,0 +1,29 @@
+# Three headline sentences
+
+**1. Recovery — it did not happen.** Putting a GAN super-resolver in front of an off-the-shelf ship detector did not recover ships lost to resolution: at a matched confidence threshold, ship recall on Real-ESRGAN output was **0.881** against **0.901** for a plain bicubic upscale of the same degraded image and **0.951** on the original (conf 0.25, rotated-IoU 0.5, `results/setA_fixed_threshold.json`). The GAN cost recall rather than restoring it, and it did so while adding unmatched detections (546 vs bicubic's 439).
+
+*Unmatched detections are not false positives:* the original imagery itself leaves 397 detections unmatched against the same labels, because DOTA's ship annotations omit small craft. The column counts detections that found no ground-truth box to pair with. All three versions are scored against the same labels, so the comparison between them holds. Ground truth is 3380 ship instances over all 100 Set A tiles (ultralytics' own validator reports 3378, because it drops `P0261__1024__390___0` for a polygon vertex at 1.179). IoU is ultralytics `batch_probiou`, a Gaussian approximation of rotated-box IoU, applied identically to every version.
+
+**2. Invention — the lead result. Super-resolution made the detector claim vessels that are not there on 14.0%-16.0% of 150 harbor and bridge tiles where the same detector saw nothing in the original, against 1.3%-2.0% for a plain bicubic upscale of the same degraded data** (exact McNemar p = 3.8e-06 lower band, 5.7e-06 upper; paired on the same tiles, the tile is the unit of independence).
+
+**The firing rate comes first, because it needs no human verdict at all.** On 150 tiles the sharp original produced **zero** ship detections. Real-ESRGAN made the detector fire on **28.7% of tiles** (43/150, 95% CI 21.3-36.0) against **6.0%** (9/150, CI 2.7-10.0) for bicubic — a paired difference of **+22.7 points** [16.0, 29.3], exact McNemar p = 1.2e-10. **This holds at both detector thresholds**: at conf 0.50 it is 9.3% vs 1.3%, +8.0 pp [3.3, 13.3], p = 0.004.
+
+Every one of those extra boxes (153 in total, SR and bicubic alike) was then cropped from the **original** imagery and judged by hand, blind to which version produced it, in two passes. Counting only tiles that carry a box judged *not a vessel*:
+
+| invention at conf 0.25 | Real-ESRGAN | bicubic | difference | exact McNemar p |
+|---|---|---|---|---|
+| lower band (not-a-vessel only) | **14.0%** [8.7, 20.0] | 1.3% [0.0, 3.3] | +12.7 pp | **3.8e-06** |
+| upper band (+ uncertain) | **16.0%** [10.0, 22.0] | 2.0% [0.0, 4.7] | +14.0 pp | **5.7e-06** |
+
+**It survives dropping the worst tile.** Invention is concentrated: `P1751__1024__0___2976` alone carries 45 of the 85 not-a-vessel boxes in the whole set. Removing that tile from the numerator *and* the denominator leaves 149 tiles, and the tile-level result barely moves — **13.4%-15.4%** of tiles against bicubic's 1.3%-2.0%, p = 7.6e-06 and 1.1e-05. The test counts each tile once, so no single scene can drive it.
+
+**At box level the two arms are different kinds of error** — and this is the figure that does depend on that one tile, so both versions are given. Of Real-ESRGAN's 140 extra boxes set-wide, **83-88 had no vessel under them (59-63%)**; of the 95 that remain once `P1751__1024__0___2976` is dropped, **38-43 do (40-45%)**. Bicubic's 13 extra boxes contain **2-3 with no vessel** — 13 boxes is too few for a percentage to mean anything, so it is given as a count. The rest of bicubic's extra boxes (10 of 13) were real vessels DOTA never labelled and the original detector missed: when a plain upscale makes the detector newly confident, it is usually right. When the GAN does it, most of the time there is nothing there.
+
+**What is not significant.** Invention at a detector threshold of 0.50: 2.7%-3.3% vs 0.7%, p = 0.375 and 0.219. Only 31 SR boxes survive that threshold at all, 12-13 of them not-a-vessel, on 4-5 tiles. That is too little data to resolve the difference, not evidence that it goes away: the point estimate still moves the same direction, and the *firing rate* at the same threshold is significant (p = 0.004). Raising the detector's confidence bar reduces invention; it does not remove it.
+
+**Why any of this is possible.** The SR image is computed from a 4x degraded copy of the original: by the data processing inequality it cannot contain more information about the scene than the original does. A detection that appears on the SR image and not on the original is therefore never new evidence. It is either synthesized texture, or the same evidence re-formatted into edges and contrast the detector's priors will accept — and the audit says which. On P1751, a dark residential hillside, Real-ESRGAN produced 45 ship detections where the original and the bicubic upscale both returned zero, and all 45 were judged not a vessel. That tile is an illustration of the failure mode, not a rate.
+
+**3. What the pixel metrics said — nothing useful.** PSNR and SSIM barely separated the two methods: 28.78 dB vs 30.12 dB, SSIM 0.748 vs 0.753, while their tile-level invention rates differ by roughly 10x. The pixel scores happen to rank bicubic first, but a 1.3 dB gap carries no signal about *why*: nothing in the number distinguishes "slightly less faithful texture" from "draws vessels that do not exist". Within the SR arm, PSNR does not even rank the tiles: low SR PSNR predicts a tile carrying an invented object with AUC **0.59** (p = 0.17), Spearman rho = -0.11 (p = 0.17) — indistinguishable from a coin flip.
+
+---
+Generated by `scripts/16_headline.py` from `results/setA_fixed_threshold.json`, `results/setB_audited.json`, `results/setB_audited_no_P1751.json`, `results/psnr_vs_invention.json` and `results/psnr.csv`. No number in this file is typed by hand.
