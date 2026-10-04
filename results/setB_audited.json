@@ -1,0 +1,250 @@
+{
+  "n_tiles": 150,
+  "n_crops": 153,
+  "labels_file": "results/audit_labels.csv",
+  "excluded_tiles": [],
+  "verdict_tally": {
+    "sr_ship": 52,
+    "sr_not_ship": 83,
+    "bicubic_ship": 10,
+    "sr_unsure": 5,
+    "bicubic_not_ship": 2,
+    "bicubic_unsure": 1
+  },
+  "bands": {
+    "conf0.25_lower": {
+      "label": "unsure counted as a real ship (lower bound on invention)",
+      "sr": {
+        "tiles_with_ship": 21,
+        "pct_tiles": 14.0,
+        "pct_ci95": [
+          8.666666666666668,
+          20.0
+        ],
+        "total_ships": 83,
+        "per_100_tiles": 55.333333333333336
+      },
+      "bicubic": {
+        "tiles_with_ship": 2,
+        "pct_tiles": 1.3333333333333333,
+        "pct_ci95": [
+          0.0,
+          3.3333333333333335
+        ],
+        "total_ships": 2,
+        "per_100_tiles": 1.3333333333333333
+      },
+      "paired": {
+        "sr_only_tiles": 19,
+        "bicubic_only_tiles": 0,
+        "mcnemar_exact_p": 3.814697265625e-06,
+        "diff_pct_points": 12.666666666666666,
+        "diff_ci95": [
+          7.333333333333333,
+          18.000000000000004
+        ]
+      }
+    },
+    "conf0.25_upper": {
+      "label": "unsure counted as invented (upper bound on invention)",
+      "sr": {
+        "tiles_with_ship": 24,
+        "pct_tiles": 16.0,
+        "pct_ci95": [
+          10.0,
+          22.0
+        ],
+        "total_ships": 88,
+        "per_100_tiles": 58.666666666666664
+      },
+      "bicubic": {
+        "tiles_with_ship": 3,
+        "pct_tiles": 2.0,
+        "pct_ci95": [
+          0.0,
+          4.666666666666667
+        ],
+        "total_ships": 3,
+        "per_100_tiles": 2.0
+      },
+      "paired": {
+        "sr_only_tiles": 22,
+        "bicubic_only_tiles": 1,
+        "mcnemar_exact_p": 5.7220458984375e-06,
+        "diff_pct_points": 14.0,
+        "diff_ci95": [
+          8.0,
+          20.0
+        ]
+      }
+    },
+    "conf0.5_lower": {
+      "label": "unsure counted as a real ship (lower bound on invention)",
+      "sr": {
+        "tiles_with_ship": 4,
+        "pct_tiles": 2.6666666666666665,
+        "pct_ci95": [
+          0.6666666666666667,
+          5.333333333333334
+        ],
+        "total_ships": 12,
+        "per_100_tiles": 8.0
+      },
+      "bicubic": {
+        "tiles_with_ship": 1,
+        "pct_tiles": 0.6666666666666666,
+        "pct_ci95": [
+          0.0,
+          2.0
+        ],
+        "total_ships": 1,
+        "per_100_tiles": 0.6666666666666666
+      },
+      "paired": {
+        "sr_only_tiles": 4,
+        "bicubic_only_tiles": 1,
+        "mcnemar_exact_p": 0.375,
+        "diff_pct_points": 2.0,
+        "diff_ci95": [
+          -0.6666666666666667,
+          5.333333333333333
+        ]
+      }
+    },
+    "conf0.5_upper": {
+      "label": "unsure counted as invented (upper bound on invention)",
+      "sr": {
+        "tiles_with_ship": 5,
+        "pct_tiles": 3.3333333333333335,
+        "pct_ci95": [
+          0.6666666666666667,
+          6.666666666666667
+        ],
+        "total_ships": 13,
+        "per_100_tiles": 8.666666666666666
+      },
+      "bicubic": {
+        "tiles_with_ship": 1,
+        "pct_tiles": 0.6666666666666666,
+        "pct_ci95": [
+          0.0,
+          2.0
+        ],
+        "total_ships": 1,
+        "per_100_tiles": 0.6666666666666666
+      },
+      "paired": {
+        "sr_only_tiles": 5,
+        "bicubic_only_tiles": 1,
+        "mcnemar_exact_p": 0.21875,
+        "diff_pct_points": 2.666666666666667,
+        "diff_ci95": [
+          0.0,
+          6.0
+        ]
+      }
+    }
+  },
+  "beyond_original": {
+    "conf0.25": {
+      "hr_tiles_fired": 0,
+      "sr": {
+        "tiles_fired_beyond_hr": 43,
+        "pct_tiles": 28.666666666666668,
+        "pct_ci95": [
+          21.333333333333336,
+          36.0
+        ],
+        "boxes_on_those_tiles": 140,
+        "verdict_counts": {
+          "ship": 52,
+          "not_ship": 83,
+          "unsure": 5
+        },
+        "verdict_share_pct": {
+          "ship": 37.142857142857146,
+          "not_ship": 59.285714285714285,
+          "unsure": 3.5714285714285716
+        }
+      },
+      "bicubic": {
+        "tiles_fired_beyond_hr": 9,
+        "pct_tiles": 6.0,
+        "pct_ci95": [
+          2.666666666666667,
+          10.0
+        ],
+        "boxes_on_those_tiles": 13,
+        "verdict_counts": {
+          "ship": 10,
+          "not_ship": 2,
+          "unsure": 1
+        },
+        "verdict_share_pct": {
+          "ship": 76.92307692307692,
+          "not_ship": 15.384615384615385,
+          "unsure": 7.6923076923076925
+        }
+      },
+      "paired": {
+        "sr_only_tiles": 34,
+        "bicubic_only_tiles": 0,
+        "mcnemar_exact_p": 1.1641532182693481e-10,
+        "diff_pct_points": 22.666666666666668,
+        "diff_ci95": [
+          16.0,
+          29.333333333333332
+        ]
+      }
+    },
+    "conf0.5": {
+      "hr_tiles_fired": 0,
+      "sr": {
+        "tiles_fired_beyond_hr": 14,
+        "pct_tiles": 9.333333333333334,
+        "pct_ci95": [
+          4.666666666666667,
+          14.000000000000002
+        ],
+        "boxes_on_those_tiles": 31,
+        "verdict_counts": {
+          "ship": 18,
+          "not_ship": 12,
+          "unsure": 1
+        },
+        "verdict_share_pct": {
+          "ship": 58.064516129032256,
+          "not_ship": 38.70967741935484,
+          "unsure": 3.225806451612903
+        }
+      },
+      "bicubic": {
+        "tiles_fired_beyond_hr": 2,
+        "pct_tiles": 1.3333333333333333,
+        "pct_ci95": [
+          0.0,
+          3.3333333333333335
+        ],
+        "boxes_on_those_tiles": 2,
+        "verdict_counts": {
+          "ship": 1,
+          "not_ship": 1
+        },
+        "verdict_share_pct": {
+          "ship": 50.0,
+          "not_ship": 50.0
+        }
+      },
+      "paired": {
+        "sr_only_tiles": 14,
+        "bicubic_only_tiles": 2,
+        "mcnemar_exact_p": 0.004180908203125,
+        "diff_pct_points": 8.0,
+        "diff_ci95": [
+          3.3333333333333326,
+          13.333333333333334
+        ]
+      }
+    }
+  }
+}
