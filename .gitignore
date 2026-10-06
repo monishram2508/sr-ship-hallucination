@@ -24,3 +24,6 @@ results/ultralytics/
 __pycache__/
 *.pyc
 .DS_Store
+
+# outreach drafts, not part of the public repo
+email_draft.md
