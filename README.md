@@ -1,18 +1,20 @@
 # Does GAN super-resolution make a detector see ships that aren't there?
 
-I took labelled overhead imagery, degraded it 4x with a sensor model, restored it two ways — a plain
-bicubic upscale and a GAN super-resolver — and ran the **same** pretrained ship detector on all three
-versions. The detector was never retrained on super-resolved output, because that is how
-super-resolution actually gets deployed: bolted in front of a pipeline that already exists.
+The one-liner: the GAN made the detector see ships that were never there about 10x more often than a plain upscale did. It found no extra real ships in return. And the standard image quality score, PSNR, didn't notice either of the issues.
 
-Then I counted two things separately, which most super-resolution papers do not:
+I took labelled overhead imagery, degraded it 4x with a sensor model, restored it two ways — a plain
+bicubic upscale and a GAN super-resolver — and ran the same pretrained ship detector on all three
+versions. The detector was never retrained on super-resolved output, because that is how
+super-resolution actually gets deployed on systems.
+
+I've counted two things separately, which most super-resolution papers don't:
 
 - **Recovery** — how many ships does it get back that the degradation destroyed?
 - **Invention** — how many ships does it claim that were never there?
 
 On 150 harbor and bridge tiles where the detector found nothing in the original image, the GAN made
 it claim vessels that are not there on **14-16% of tiles**, against **1.3-2.0%** for the plain
-upscale of the identical degraded data (exact McNemar p = 3.8e-06). It recovered nothing: ship recall
+upscale of the identical degraded data (exact McNemar p = 3.8e-6). It recovered no new ships either: ship recall
 at a matched threshold was **0.881**, *below* bicubic's 0.901. PSNR saw none of it.
 
 Every "invented" box was then checked by hand against the original image, blind, in two passes —
@@ -27,13 +29,14 @@ hillside.](results/figures/hero.png)
 ## Why I looked at this
 
 Super-resolution is increasingly placed in front of detection pipelines that were built and tuned on
-real captures. The way the sharpening step usually gets validated is a **pixel check**: either a
+real captures. The sharpening validation step is usually via a **pixel check**: either a
 similarity score against a reference (PSNR, SSIM), or a consistency check that shrinks the output
 back down to the input's resolution and compares brightness, re-running the tile if the error is too
-large.
+large (radiometric audit).
 
-**Neither kind of check can see objects.** Here is the arithmetic, which is the whole reason this
-project exists.
+**Neither of them can see objects that might have been invented.**
+
+Example:
 
 Take one pixel of a 1 m input image: a patch of open water with brightness 120. At 4x, the model has
 to return 16 numbers where there was one. The honest answer is flat:
@@ -55,13 +58,10 @@ But so is this one — a bright hull with its shadow underneath:
 ```
 
 Both average to exactly 120. Shrink either one back down and you get the input pixel you started
-with. **A boat that is not there costs nothing in brightness.** The set of edits a downsampler cannot
+with. **A boat that is not there bypasses this brightness check.** The set of edits a downsampler cannot
 see is the *null space* of that operator, and a fake vessel painted on rippling water sits right
 inside it. Any check of the form "does the output still agree with the input at the input's
-resolution" passes it by construction.
-
-So if you want to know whether sharpening invents objects, you have to go and look for the objects.
-That is what this repository does.
+resolution" passes it by construction. So if we want to know whether sharpening invents objects, we're forced to go and look for the objects.
 
 There is a second argument that makes the measurement meaningful at all. The super-resolved image is
 computed from a 4x degraded copy of the original — nothing else goes in. By the **data processing
@@ -73,26 +73,23 @@ which is exactly what the audit does.
 
 ## The setup
 
-**The forward problem.** A satellite pixel is a measurement of how much light came off a patch of
-ground, and the size of that patch is the ground sample distance. What the sensor records is
+A satellite pixel is a measurement of how much light came off a patch of ground of size GSD (ground sample distance). What the sensor records is
 
-```
-y = D( B(x) ) + n
-```
+$y = D\big(B(x)\big) + n$
 
-where `x` is the true scene, `B` is the blur from the optics (the point-spread function — what a
+where `x` is the true scene, `B` is the blur from the optics (the point-spread function or PSF: what a
 single dot of light looks like after going through a lens), `D` averages blocks of pixels down onto
 the sensor grid, and `n` is noise. Super-resolution is the inverse: given `y`, guess `x`. At 4x,
 every input pixel stands for 16 output pixels, so you know one number and are guessing fifteen.
-Different models guess differently, and **how** they guess is the whole story.
 
-**The degradation.** I follow the sensor model from Shermeyer & Van Etten (2019): Gaussian PSF blur
-with sigma = 0.5 x GSD_out / GSD_native (= 2.0 at 4x), then inter-area decimation from 1024 px to
-256 px. Blur first, then shrink — that order matters, because it is the order the optics and the
-sensor actually happen in. Everything is written as PNG; JPEG artefacts would confound the whole
-comparison.
+**The degradation.** I follow the sensor model from Shermeyer & Van Etten (2019):
 
-**Two restorations, and why two.** From the same 256 px image I make:
+Gaussian PSF blur (the lens)
+with sigma = 0.5 x GSD_out / GSD_native (= 2.0 at 4x)
+
+then inter-area decimation from 1024 px to 256 px. I blurred first then shrunk it, since that's the order the optics and the sensor actually happen in.
+
+**Two restorations:** From the same 256 px image I make,
 
 - a **bicubic x4** upscale — pure interpolation, no learned prior, no ability to invent anything;
 - a **Real-ESRGAN x4plus** output — a GAN.
@@ -100,13 +97,12 @@ comparison.
 Bicubic is the control, and it is doing real work. Without it, "the detector found a ship on the SR
 image that it missed on the original" is ambiguous: it could just mean the degradation is survivable
 and any upscale would recover the object. Bicubic has access to exactly the same information and
-exactly the same degraded pixels, and it cannot hallucinate — so any gap between the two arms is
-attributable to the generative prior and not to the resolution.
+exactly the same degraded pixels, and it cannot invent object-shaped detail, so any difference between the two paths is
+attributable to the generative prior (of the GAN) and not to the resolution. 
 
 **The detector is the control variable.** YOLOv8s-OBB pretrained on DOTAv1, oriented boxes,
 `imgsz=1024`, identical weights and thresholds on all three versions, never fine-tuned on anything.
-All three are scored against the same label files. If the comparison moves, the super-resolution is
-what moved it.
+All three are scored against the same label files.
 
 **Two test sets**, both tiled 1024x1024 from the validation split only:
 
@@ -118,7 +114,7 @@ what moved it.
 
 ### 1. It recovered nothing
 
-Ship class only, same fixed confidence for every version, greedy highest-confidence-first matching,
+Set A: Ship class only, same fixed confidence for every version, greedy highest-confidence-first matching,
 rotated-box IoU >= 0.5.
 
 | conf | Version | Precision | Recall | F1 | mAP50 |
@@ -400,8 +396,6 @@ curl -L -o weights/RealESRGAN_x4plus.pth \
 | `06_summary.py`, `16_headline.py` | build `results/summary.md` and `results/headline.md` from files |
 | `07_figures.py` | hero figure, 3-panel comparison, PSNR scatter |
 
-Runs on a MacBook Pro M2 (8 GB, Apple MPS) in a few hours, most of it super-resolution.
-`PYTORCH_ENABLE_MPS_FALLBACK=1` is set by `scripts/common.py`.
 
 **Every number in the write-up is generated from a file in `results/`; none is typed by hand.** The
 two write-ups (`results/summary.md`, `results/headline.md`) are produced by scripts that read the
