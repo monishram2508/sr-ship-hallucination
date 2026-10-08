@@ -112,10 +112,10 @@ All three are scored against the same label files.
 
 ## What I found
 
-**In one paragraph.** From the same degraded input, the GAN made the detector report a vessel
+From the same degraded input, the GAN made the detector report a vessel
 that is not there on **21–24 of 150 empty scenes (14–16%)**. The plain-interpolation control did so
 on **2–3 (1.3–2.0%)**, a difference that would arise by chance about 4 times in a million. On labelled
-ships, the GAN found *fewer* than the control, not more. And the standard image-quality score (PSNR)
+ships, the GAN found fewer than the bicubic control did, not more. And the standard image-quality score (PSNR)
 cannot tell the tiles with phantom vessels from the clean ones.
 
 | | Bicubic (control) | Real-ESRGAN (GAN) |
@@ -126,8 +126,8 @@ cannot tell the tiles with phantom vessels from the clean ones.
 | PSNR against the original | 30.1 dB | 28.8 dB |
 
 Every comparison uses the same detector, the same labels and the same **fixed confidence threshold**
-for all three versions of each image. The detector scores each box from 0 to 1, and only boxes scoring
-at least the threshold $\tau$ count.
+for all three versions of each image. The detector scores each box from 0 to 1; only boxes at or
+above the threshold $\tau$ count.
 
 ---
 
@@ -141,16 +141,6 @@ $$\text{IoU}(A,B) = \frac{\text{area}(A \cap B)}{\text{area}(A \cup B)} \;\ge\; 
 
 Boxes are matched greedily, highest confidence first, and each label can be claimed only once.
 
-**Scores.**
-
-$$P = \frac{\text{matched boxes}}{\text{all reported boxes}} \qquad
-R = \frac{\text{matched labels}}{\text{all labels}} \qquad
-F_1 = \frac{2PR}{P + R}$$
-
-- **Precision** $P$ asks: when it says "ship", is it right?
-- **Recall** $R$ asks: of the real ships, how many did it find?
-- **mAP50** is the area under the precision–recall curve as $\tau$ sweeps from 1 to 0, at IoU ≥ 0.5. It is a threshold-free summary: $\text{AP} = \int_0^1 P(R)\,dR$.
-
 | $\tau$ | Version | $P$ | $R$ | $F_1$ | mAP50 |
 |---|---|---|---|---|---|
 | 0.25 | Original | 0.890 | 0.951 | 0.920 | 0.982 |
@@ -159,6 +149,10 @@ F_1 = \frac{2PR}{P + R}$$
 | 0.50 | Original | 0.913 | 0.935 | 0.924 | — |
 | 0.50 | Bicubic x4 | 0.928 | 0.853 | 0.889 | — |
 | 0.50 | Real-ESRGAN x4 | 0.916 | 0.825 | 0.868 | — |
+
+$P$: of the boxes it reported, the share that were right. $R$: of the real ships, the share it
+found. mAP50: a threshold-free summary — the area under the precision–recall curve as $\tau$
+sweeps, at IoU $\ge$ 0.5.
 
 Degradation costs the detector $0.951 - 0.901 = 0.050$ of recall. The GAN exists to win that back.
 Instead it loses more:
@@ -210,7 +204,7 @@ count:
 
 If both arms were equally prone to invent, each discordant tile would be a fair coin flip, so
 
-$$p = 2\sum_{k=0}^{\min(b,c)} \binom{n}{k}\left(\tfrac{1}{2}\right)^{n}$$
+$p = 2\sum_{k=0}^{\min(b,c)} \binom{n}{k}\left(\tfrac{1}{2}\right)^{n}$
 
 At the low end, $b = 19$ and $c = 0$: every tile where bicubic invented, the GAN did too. Then
 
@@ -401,87 +395,30 @@ detection](results/figures/audit/qa_not_ship.png)
 
 ## Related work
 
-- **Shermeyer & Van Etten (2019), [arXiv:1812.04098](https://arxiv.org/abs/1812.04098).**
-  Super-resolution for object detection on 30 cm satellite imagery, with VDSR and a random-forest
-  super-resolver. Their detectors were **retrained on super-resolved output**, which is the opposite
-  of the setting here — this project asks what happens when SR is bolted in front of a detector nobody
-  retrained. Their sensor-degradation model is the one I use.
-- **GeoSR-Bench, Li et al. (2026), [arXiv:2605.00310](https://arxiv.org/abs/2605.00310).** Nine
-  super-resolution models across transformer, neural-operator, GAN and diffusion families on
-  downstream geospatial tasks. PSNR and SSIM often fail to track downstream performance and sometimes
-  correlate negatively; in places ESRGAN and a diffusion model did worse than no upscaling at all.
-  Their downstream tasks are **pixel-level** — segmentation and regression — so there is no object
-  detection and no count of invented objects.
+**Shermeyer & Van Etten (2019)** ([arXiv:1812.04098](https://arxiv.org/abs/1812.04098)) put
+super-resolution in front of object detection on 30 cm imagery — but **retrained the detectors on
+super-resolved output**, which is the opposite of the setting here. Their sensor-degradation model is
+the one I use. **GeoSR-Bench** ([arXiv:2605.00310](https://arxiv.org/abs/2605.00310), 2026)
+benchmarked nine super-resolvers and found PSNR and SSIM often fail to track downstream performance,
+sometimes negatively — but only on pixel-level tasks, so no object detection and no count of invented
+objects.
 
-**What is new here:** a direct count of invented *objects* in scenes verified empty of detections,
-with a detector that was not retrained, and with every claimed object adjudicated by a blind hand
-audit instead of assumed from a label file.
+**What is new here:** a direct count of invented *objects*, with a detector nobody retrained, and
+every claimed object adjudicated by a blind hand audit instead of assumed from a label file.
 
-## Reproducing
-
-```bash
-python3.11 -m venv .venv
-.venv/bin/pip install ultralytics spandrel opencv-python scikit-image pandas matplotlib tqdm scipy
-
-# data (academic use only, see below) and super-resolution weights
-curl -L -o data/DOTAv1.zip https://github.com/ultralytics/assets/releases/download/v0.0.0/DOTAv1.zip
-curl -L -o weights/RealESRGAN_x4plus.pth \
-  https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
-
-.venv/bin/python scripts/00_smoke.py          # environment check
-.venv/bin/python scripts/01_tile.py
-.venv/bin/python scripts/02_select_sets.py
-.venv/bin/python scripts/03_degrade_sr.py
-.venv/bin/python scripts/04_detect.py
-.venv/bin/python scripts/05_psnr.py
-.venv/bin/python scripts/10_fixed_threshold.py
-
-# the audit
-.venv/bin/python scripts/08_audit_boxes.py    # crops + key + blank label file
-.venv/bin/python scripts/11_label.py          # s = ship, n = not_ship, u = unsure, b = back, q = quit
-.venv/bin/python scripts/13_pass2.py
-.venv/bin/python scripts/11_label.py --pass2
-.venv/bin/python scripts/14_merge.py
-
-# results
-.venv/bin/python scripts/09_recount.py
-.venv/bin/python scripts/09_recount.py --exclude P1751__1024__0___2976 --out results/setB_audited_no_P1751.json
-.venv/bin/python scripts/06_summary.py
-.venv/bin/python scripts/16_headline.py
-.venv/bin/python scripts/07_figures.py
-```
-
-| script | what it does |
-|---|---|
-| `01_tile.py` | tile the val split to 1024x1024 |
-| `02_select_sets.py` | build Set A and Set B |
-| `03_degrade_sr.py` | blur, decimate, bicubic, Real-ESRGAN; write the three versions |
-| `04_detect.py` | run the detector on every version of both sets |
-| `05_psnr.py` | PSNR / SSIM per tile |
-| `08_audit_boxes.py` | build the blinded audit: crops, key, empty label file |
-| `11_label.py` | the blind labelling UI |
-| `13_pass2.py`, `14_merge.py` | second-pass adjudication of the uncertain crops, and the merge |
-| `09_recount.py` | recount Set B from the audit verdicts |
-| `10_fixed_threshold.py` | Set A P/R/F1 at a *fixed* confidence for all versions |
-| `06_summary.py`, `16_headline.py` | build `results/summary.md` and `results/headline.md` from files |
-| `07_figures.py` | hero figure, 3-panel comparison, PSNR scatter |
-
-
-**Every number in the write-up is generated from a file in `results/`; none is typed by hand.** The
-two write-ups (`results/summary.md`, `results/headline.md`) are produced by scripts that read the
-JSON and CSV outputs, so the prose cannot drift away from the data. The audit's own record —
-`audit_key.csv`, `audit_labels_pass1.csv`, `audit_labels_pass2.csv`, `audit_labels.csv` — is in the
-repository too, so anyone can disagree with my verdicts and recount.
+Every number above is produced by a script reading a file in `results/`, never typed by hand, and the
+audit's raw verdicts ship with the repository — so anyone can disagree with my labels and recount.
 
 ## Data and licence
 
-Imagery is **DOTA v1.0** (Xia et al., *DOTA: A Large-scale Dataset for Object Detection in Aerial
-Images*, CVPR 2018), used via the Ultralytics-converted release, validation split only.
+Imagery is **DOTA v1.0** (Xia et al., CVPR 2018), validation split only, via the
+[Ultralytics release](https://github.com/ultralytics/assets/releases/download/v0.0.0/DOTAv1.zip).
 
-> **DOTA is licensed for academic and non-commercial use only.** The dataset is not redistributed
-> here: `data/` is gitignored and must be downloaded from the link above. The figures in this
-> repository contain small DOTA-derived crops to illustrate the method and its audit.
+> **DOTA is licensed for academic and non-commercial use only.** It is not redistributed here —
+> `data/` is gitignored. The figures contain small DOTA-derived crops to illustrate the method and
+> its audit.
 
-Detector weights are Ultralytics `yolov8s-obb.pt` (AGPL-3.0). Super-resolution weights are
-Real-ESRGAN x4plus (BSD-3-Clause). The code in `scripts/` is the part offered for reuse: point it at
-anything that maps an image to a 4x image and the harness runs unchanged.
+Detector weights are Ultralytics `yolov8s-obb.pt` (AGPL-3.0); the super-resolver is
+[Real-ESRGAN x4plus](https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.1.0) (BSD-3-Clause). The
+code in `scripts/` is the part offered for reuse: point it at anything that maps an image to a 4x
+image and the harness runs unchanged.
