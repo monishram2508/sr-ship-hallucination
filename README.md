@@ -137,7 +137,7 @@ above the threshold $\tau$ count.
 
 **Matching.** A detected box $A$ is a hit on a labelled box $B$ when they overlap by at least half:
 
-$$\text{IoU}(A,B) = \frac{\text{area}(A \cap B)}{\text{area}(A \cup B)} \;\ge\; 0.5$$
+$$\text{IoU}(A,B) = \frac{\text{area}(A \cap B)}{\text{area}(A \cup B)}  \ge  0.5$$
 
 Boxes are matched greedily, highest confidence first, and each label can be claimed only once.
 
@@ -157,7 +157,7 @@ sweeps, at IoU $\ge$ 0.5.
 Degradation costs the detector $0.951 - 0.901 = 0.050$ of recall. The GAN exists to win that back.
 Instead it loses more:
 
-$$\Delta R_{\text{GAN} - \text{bicubic}} = 0.881 - 0.901 = -0.020 \;\;(\tau = 0.25), \qquad 0.825 - 0.853 = -0.028 \;\;(\tau = 0.50)$$
+$$\Delta R_{\text{GAN} - \text{bicubic}} = 0.881 - 0.901 = -0.020 \quad(\tau = 0.25), \qquad 0.825 - 0.853 = -0.028 \quad(\tau = 0.50)$$
 
 Its output *looks* sharper and is *worse* for the detector. This matches GeoSR-Bench (2026), which
 found GAN and diffusion super-resolvers sometimes underperforming no upscaling at all.
@@ -181,7 +181,7 @@ blind to which arm produced the box, and done in two passes with more context th
 
 **The invention rate** is the fraction of tiles carrying at least one invented box:
 
-$$r = \frac{1}{N}\sum_{i=1}^{N} \mathbf{1}\big[\,\text{tile } i \text{ has} \ge 1 \text{ invented box}\,\big]$$
+$$r = \frac{1}{N}\sum_{i=1}^{N} \mathbf{1}\big[ \text{tile } i \text{ has} \ge 1 \text{ invented box} \big]$$
 
 Here $\mathbf{1}[\cdot]$ is 1 when the condition holds and 0 otherwise. Each tile counts at most once, so
 no single scene can dominate. The rate is reported as a band:
@@ -190,9 +190,10 @@ no single scene can dominate. The rate is reported as a band:
 - $r_{\text{high}}$ counts `not_ship` and `unsure` boxes as invented.
 
 **Confidence intervals** come from a bootstrap. Draw 150 tiles *with replacement*, recompute $r$,
-and repeat $B = 10{,}000$ times:
+and repeat $B = 10{,}000$ times. The interval spans the 2.5th to the 97.5th percentile of the
+resampled rates $r^{\ast}$:
 
-$$\text{95\% CI} = \big[\, r^{*}_{(2.5\%)},\; r^{*}_{(97.5\%)} \,\big]$$
+$$\text{CI}_{95} = \big[ r^{\ast}_{2.5},\ r^{\ast}_{97.5} \big]$$
 
 **Significance** uses the exact McNemar test, which is built for paired data: every tile is restored both
 ways. Tiles where both arms agree carry no information about which is worse, so only the discordant ones
@@ -231,7 +232,7 @@ the 83 non-vessel boxes. The GAN turned soft rooftops into crisp bright rectangl
 what ships look like to this detector. Because $r$ counts *tiles*, that scene contributes exactly one
 event. Removing it from the numerator and the denominator:
 
-$$r_{\text{low}} = \frac{21}{150} = 14.0\% \;\;\longrightarrow\;\; \frac{20}{149} = 13.4\% \quad (p = 7.6 \times 10^{-6})$$
+$$r_{\text{low}} = \frac{21}{150} = 0.140 \quad\longrightarrow\quad \frac{20}{149} = 0.134 \qquad (p = 7.6 \times 10^{-6})$$
 
 **What the new detections actually were** ($\tau = 0.25$):
 
@@ -245,7 +246,7 @@ The GAN is not useless. It surfaced 52 real boats that the labels missed and the
 the original. The issue is the price, measured as phantoms per real find:
 
 $$\phi = \frac{\text{nothing there}}{\text{real vessel}}, \qquad
-\phi_{\text{GAN}} = \frac{83}{52} = 1.60 \;\;\text{or}\;\; \frac{38}{52} = 0.73 \text{ without the hillside}, \qquad
+\phi_{\text{GAN}} = \frac{83}{52} = 1.60 \quad\text{or}\quad \frac{38}{52} = 0.73 \text{ without the hillside}, \qquad
 \phi_{\text{bic}} = \frac{2}{10} = 0.20$$
 
 On the control, a newly confident detection is usually a real boat. On the GAN, it is close to a coin
@@ -288,8 +289,8 @@ A vessel that does not exist moves the score by about one-sixtieth of a decibel.
 **A result I nearly published, and why it was wrong.** Before the hand audit, PSNR looked predictive:
 AUC 0.68, $p = 0.0005$. The cause was a confound, a third variable driving both measurements:
 
-$$\text{busy scene} \;\Rightarrow\; \text{low PSNR} \quad(\rho_s = -0.44,\; p = 2 \times 10^{-8}), \qquad
-\text{busy scene} \;\Rightarrow\; \text{more unlabelled real boats}$$
+$$\text{busy scene}  \Rightarrow  \text{low PSNR} \quad(\rho_s = -0.44,  p = 2 \times 10^{-8}), \qquad
+\text{busy scene}  \Rightarrow  \text{more unlabelled real boats}$$
 
 So "low PSNR predicts invention" meant "low PSNR predicts clutter". Once each box was checked against
 the original, the relationship disappeared. Counting objects without looking at them reproduces that
