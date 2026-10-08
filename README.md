@@ -112,124 +112,194 @@ All three are scored against the same label files.
 
 ## What I found
 
-### 1. It recovered nothing
+**In one paragraph.** From the same degraded input, the GAN made the detector report a vessel
+that is not there on **21–24 of 150 empty scenes (14–16%)**. The plain-interpolation control did so
+on **2–3 (1.3–2.0%)**, a difference that would arise by chance about 4 times in a million. On labelled
+ships, the GAN found *fewer* than the control, not more. And the standard image-quality score (PSNR)
+cannot tell the tiles with phantom vessels from the clean ones.
 
-Set A: Ship class only, same fixed confidence for every version, greedy highest-confidence-first matching,
-rotated-box IoU >= 0.5.
+| | Bicubic (control) | Real-ESRGAN (GAN) |
+|---|---|---|
+| Labelled ships found (recall, conf 0.25) | **0.901** | **0.881** |
+| Empty scenes with an invented vessel (conf 0.25) | **1.3–2.0%** | **14.0–16.0%** |
+| New detections that were nothing at all | 2–3 of 13 | 83–88 of 140 |
+| PSNR against the original | 30.1 dB | 28.8 dB |
 
-| conf | Version | Precision | Recall | F1 | mAP50 |
+Every comparison uses the same detector, the same labels and the same **fixed confidence threshold**
+for all three versions of each image. The detector scores each box from 0 to 1, and only boxes scoring
+at least the threshold $\tau$ count.
+
+---
+
+### 1. Recovery: sharper did not mean more ships found
+
+*Set A: 100 tiles, 3,380 labelled ships.*
+
+**Matching.** A detected box $A$ is a hit on a labelled box $B$ when they overlap by at least half:
+
+$$\text{IoU}(A,B) = \frac{\text{area}(A \cap B)}{\text{area}(A \cup B)} \;\ge\; 0.5$$
+
+Boxes are matched greedily, highest confidence first, and each label can be claimed only once.
+
+**Scores.**
+
+$$P = \frac{\text{matched boxes}}{\text{all reported boxes}} \qquad
+R = \frac{\text{matched labels}}{\text{all labels}} \qquad
+F_1 = \frac{2PR}{P + R}$$
+
+- **Precision** $P$ asks: when it says "ship", is it right?
+- **Recall** $R$ asks: of the real ships, how many did it find?
+- **mAP50** is the area under the precision–recall curve as $\tau$ sweeps from 1 to 0, at IoU ≥ 0.5. It is a threshold-free summary: $\text{AP} = \int_0^1 P(R)\,dR$.
+
+| $\tau$ | Version | $P$ | $R$ | $F_1$ | mAP50 |
 |---|---|---|---|---|---|
-| 0.25 | Original | 0.890 | **0.951** | 0.920 | 0.982 |
-| 0.25 | Bicubic x4 | 0.874 | **0.901** | 0.887 | 0.946 |
-| 0.25 | Real-ESRGAN x4 | 0.845 | **0.881** | 0.863 | 0.934 |
+| 0.25 | Original | 0.890 | 0.951 | 0.920 | 0.982 |
+| 0.25 | Bicubic x4 | 0.874 | 0.901 | 0.887 | 0.946 |
+| 0.25 | Real-ESRGAN x4 | 0.845 | 0.881 | 0.863 | 0.934 |
 | 0.50 | Original | 0.913 | 0.935 | 0.924 | — |
 | 0.50 | Bicubic x4 | 0.928 | 0.853 | 0.889 | — |
 | 0.50 | Real-ESRGAN x4 | 0.916 | 0.825 | 0.868 | — |
 
-The GAN sits **2.0 points of recall below a plain bicubic upscale** at conf 0.25, and 2.8 points
-below at conf 0.50. Both are well below the original. So the thing it is sold for — getting back what
-resolution destroyed — did not happen here, and the sharper-looking image was actively worse for the
-detector than the blurry one. That is consistent with GeoSR-Bench (UMD, 2026), which found GAN and
-diffusion super-resolvers sometimes doing worse downstream than not upscaling at all.
+Degradation costs the detector $0.951 - 0.901 = 0.050$ of recall. The GAN exists to win that back.
+Instead it loses more:
 
-A note on the word I do **not** use: "false positive". The original imagery itself leaves 397 ship
-detections unmatched against these labels, because DOTA omits small craft. A detection with no
-matching label is not proof the detector was wrong — so the column is called *unmatched detections*,
-which is what it measures. All three versions are scored against the same labels, so the comparison
-between them survives the labels being incomplete.
+$$\Delta R_{\text{GAN} - \text{bicubic}} = 0.881 - 0.901 = -0.020 \;\;(\tau = 0.25), \qquad 0.825 - 0.853 = -0.028 \;\;(\tau = 0.50)$$
 
-### 2. It invented ships
+Its output *looks* sharper and is *worse* for the detector. This matches GeoSR-Bench (2026), which
+found GAN and diffusion super-resolvers sometimes underperforming no upscaling at all.
 
-On 150 tiles where the detector produced **zero** ship detections on the original image.
+The labels omit small craft. Even the original image produces 397 ship detections with no matching
+label, so an unmatched box is not proof of an error. All three versions are scored against the same
+labels, so the *comparison* between them is unaffected.
 
-Every test here is **tile-level**: a tile contributes at most one event, so no single pathological
-scene can run away with the rate. Confidence intervals are percentile bootstrap over 10,000 resamples
-of the 150 tiles (seed 0); p-values are the exact binomial McNemar test on the paired tiles, exact
-rather than chi-square because one discordant cell is zero.
+---
 
-**(a) The firing rate — no human judgement in it at all.** How often did degrading and restoring make
-the detector fire where the sharp original was silent?
+### 2. Invention: the GAN draws vessels that are not there
 
-| conf | Version | tiles | % of tiles | 95% CI | paired difference | exact McNemar p |
-|---|---|---|---|---|---|---|
-| 0.25 | Real-ESRGAN x4 | 43/150 | **28.7%** | [21.3, 36.0] | +22.7 pp [16.0, 29.3] | **1.2e-10** |
-| 0.25 | Bicubic x4 | 9/150 | 6.0% | [2.7, 10.0] | — | — |
-| 0.50 | Real-ESRGAN x4 | 14/150 | **9.3%** | [4.7, 14.0] | +8.0 pp [3.3, 13.3] | **4.2e-03** |
-| 0.50 | Bicubic x4 | 2/150 | 1.3% | [0.0, 3.3] | — | — |
+*Set B: $N = 150$ harbor and bridge tiles with no ship labels and zero ship detections on the
+original.* Any ship the detector reports here after degrading and restoring needs explaining.
 
-**(b) Invention — tiles carrying at least one box that a blind audit judged *not a vessel*.** The
-lower band counts only boxes judged not-a-vessel; the upper band also counts the handful still
-uncertain after two passes. It is a band, not a confidence interval: both ends are reported because
-picking one would be picking a result.
+**Defining "invented".** A detection-free original does not prove a vessel-free scene, because some
+small boats are both unlabelled and missed. So every new box from **both** arms (153 in total) was
+cropped from the *original* image and judged by hand: `ship`, `not_ship` or `unsure`. The judging was
+blind to which arm produced the box, and done in two passes with more context the second time (see
+*How I audited it*).
 
-| conf | band | Real-ESRGAN | Bicubic | difference | exact McNemar p |
+**The invention rate** is the fraction of tiles carrying at least one invented box:
+
+$$r = \frac{1}{N}\sum_{i=1}^{N} \mathbf{1}\big[\,\text{tile } i \text{ has} \ge 1 \text{ invented box}\,\big]$$
+
+Here $\mathbf{1}[\cdot]$ is 1 when the condition holds and 0 otherwise. Each tile counts at most once, so
+no single scene can dominate. The rate is reported as a band:
+
+- $r_{\text{low}}$ counts only `not_ship` boxes as invented.
+- $r_{\text{high}}$ counts `not_ship` and `unsure` boxes as invented.
+
+**Confidence intervals** come from a bootstrap. Draw 150 tiles *with replacement*, recompute $r$,
+and repeat $B = 10{,}000$ times:
+
+$$\text{95\% CI} = \big[\, r^{*}_{(2.5\%)},\; r^{*}_{(97.5\%)} \,\big]$$
+
+**Significance** uses the exact McNemar test, which is built for paired data: every tile is restored both
+ways. Tiles where both arms agree carry no information about which is worse, so only the discordant ones
+count:
+
+- $b$ = tiles where only the GAN invented
+- $c$ = tiles where only bicubic invented
+- $n = b + c$
+
+If both arms were equally prone to invent, each discordant tile would be a fair coin flip, so
+
+$$p = 2\sum_{k=0}^{\min(b,c)} \binom{n}{k}\left(\tfrac{1}{2}\right)^{n}$$
+
+At the low end, $b = 19$ and $c = 0$: every tile where bicubic invented, the GAN did too. Then
+
+$$p = 2\left(\tfrac{1}{2}\right)^{19} = \frac{2}{524{,}288} \approx 3.8 \times 10^{-6}$$
+
+That is the probability of 19 heads in a row from a fair coin, counting either side.
+
+**The headline result:**
+
+| $\tau$ | band | Real-ESRGAN | Bicubic | $r_{\text{GAN}} - r_{\text{bic}}$ | $p$ |
 |---|---|---|---|---|---|
-| 0.25 | lower | **14.0%** [8.7, 20.0] | 1.3% [0.0, 3.3] | +12.7 pp | **3.8e-06** |
-| 0.25 | upper | **16.0%** [10.0, 22.0] | 2.0% [0.0, 4.7] | +14.0 pp | **5.7e-06** |
-| 0.50 | lower | 2.7% [0.7, 5.3] | 0.7% [0.0, 2.0] | +2.0 pp | 0.375 |
-| 0.50 | upper | 3.3% [0.7, 6.7] | 0.7% [0.0, 2.0] | +2.7 pp | 0.219 |
+| 0.25 | low | **14.0%** [8.7, 20.0] | 1.3% [0.0, 3.3] | +12.7 pts | **3.8 × 10⁻⁶** |
+| 0.25 | high | **16.0%** [10.0, 22.0] | 2.0% [0.0, 4.7] | +14.0 pts | **5.7 × 10⁻⁶** |
+| 0.50 | low | 2.7% [0.7, 5.3] | 0.7% [0.0, 2.0] | +2.0 pts | 0.375 |
+| 0.50 | high | 3.3% [0.7, 6.7] | 0.7% [0.0, 2.0] | +2.7 pts | 0.219 |
 
-**At conf 0.50 this is not significant, and I am not going to dress that up.** Only 31
-super-resolved boxes survive the higher threshold at all, 12-13 of them not-a-vessel on 4-5 tiles —
-too little data to resolve a 2-point difference. The point estimate still moves the same way, and the
-judgement-free firing rate *is* significant at that threshold (p = 4.2e-03). Raising the detector's
-confidence bar reduces invention. It does not remove it.
+**At $\tau = 0.50$ the difference is not significant.** Only 31 boxes survive the stricter threshold,
+too few to resolve a 2-point gap. The raw firing rate at that threshold still differs significantly:
+9.3% vs 1.3%, $p = 0.004$. That rate counts every new ship box with no human judgement at all. A
+stricter threshold reduces invention. It does not remove it.
 
-**One tile dominates, and the result survives removing it.** A single dark residential hillside
-carries 45 of the 85 not-a-vessel boxes in the whole set. Dropping that tile from the numerator *and*
-the denominator leaves 149 tiles:
+**One scene, and why it doesn't drive the result.** A single dark residential hillside produced 45 of
+the 83 non-vessel boxes. The GAN turned soft rooftops into crisp bright rectangles in rows, which is
+what ships look like to this detector. Because $r$ counts *tiles*, that scene contributes exactly one
+event. Removing it from the numerator and the denominator:
 
-| conf 0.25 band | all 150 tiles | worst tile dropped (149) | bicubic | exact McNemar p |
+$$r_{\text{low}} = \frac{21}{150} = 14.0\% \;\;\longrightarrow\;\; \frac{20}{149} = 13.4\% \quad (p = 7.6 \times 10^{-6})$$
+
+**What the new detections actually were** ($\tau = 0.25$):
+
+| | New boxes | Real vessel | Nothing there | Unsure |
 |---|---|---|---|---|
-| lower | 14.0% | **13.4%** [8.1, 19.5] | 1.3% | **7.6e-06** |
-| upper | 16.0% | **15.4%** [10.1, 21.5] | 2.0% | **1.1e-05** |
+| Real-ESRGAN | 140 | 52 | 83 | 5 |
+| Real-ESRGAN, hillside removed | 95 | 52 | 38 | 5 |
+| Bicubic | 13 | 10 | 2 | 1 |
 
-It moves by 0.6 points, because a tile-level test already counts each tile once. That is the reason
-the headline is tile-level and not box-level.
+The GAN is not useless. It surfaced 52 real boats that the labels missed and the detector missed on
+the original. The issue is the price, measured as phantoms per real find:
 
-**(c) The two arms fail in different ways.** This is the figure that *does* depend on that one tile,
-so both versions are always given together.
+$$\phi = \frac{\text{nothing there}}{\text{real vessel}}, \qquad
+\phi_{\text{GAN}} = \frac{83}{52} = 1.60 \;\;\text{or}\;\; \frac{38}{52} = 0.73 \text{ without the hillside}, \qquad
+\phi_{\text{bic}} = \frac{2}{10} = 0.20$$
 
-| extra boxes where the original was silent (conf 0.25) | total | real vessel | no vessel | uncertain |
-|---|---|---|---|---|
-| Real-ESRGAN x4 | 140 | 52 | 83 | 5 |
-| Real-ESRGAN x4, worst tile dropped | 95 | 52 | 38 | 5 |
-| Bicubic x4 | 13 | 10 | 2 | 1 |
+On the control, a newly confident detection is usually a real boat. On the GAN, it is close to a coin
+flip. *(Boxes cluster within scenes, so these counts describe; the tile-level table above is what tests.)*
 
-59-63% of the GAN's extra boxes had nothing under them set-wide, 40-45% with the worst tile dropped.
-Bicubic's 13 extra boxes contained 2-3 with nothing under them — 13 boxes is too few for a percentage
-to carry meaning, so it is given as a count. The other 10 were **real unlabelled vessels**: boats
-DOTA never annotated that the detector missed on the original and found after upscaling. That is a
-genuine recovery.
+---
 
-So: when a plain upscale makes the detector newly confident, it is usually right. When the GAN does
-it, most of the time there is nothing there. Same detector, same tiles, same threshold, opposite
-reliability — and that contrast is the actual result, more than any single percentage.
+### 3. PSNR cannot see it
 
-### 3. PSNR saw none of it
+PSNR scores an image $\hat{x}$ against the original $x$ by mean squared pixel error. Higher means closer:
 
-| Version | mean PSNR vs original | mean SSIM |
+$$\text{MSE} = \frac{1}{HW}\sum_{u=1}^{H}\sum_{v=1}^{W}\big(x_{uv} - \hat{x}_{uv}\big)^2, \qquad
+\text{PSNR} = 10\log_{10}\frac{255^2}{\text{MSE}}$$
+
+SSIM compares local means $\mu$, variances $\sigma^2$ and covariance $\sigma_{xy}$:
+
+$$\text{SSIM}(x,\hat{x}) = \frac{(2\mu_x\mu_{\hat{x}} + C_1)(2\sigma_{x\hat{x}} + C_2)}{(\mu_x^2 + \mu_{\hat{x}}^2 + C_1)(\sigma_x^2 + \sigma_{\hat{x}}^2 + C_2)}$$
+
+| Version | PSNR | SSIM |
 |---|---|---|
-| Bicubic x4 | 30.12 dB | 0.753 |
-| Real-ESRGAN x4 | 28.78 dB | 0.748 |
+| Bicubic x4 | 30.1 dB | 0.753 |
+| Real-ESRGAN x4 | 28.8 dB | 0.748 |
 
-A 1.3 dB gap, while the tile-level invention rates differ by roughly 10x. The pixel scores happen to
-rank bicubic first, but nothing in the number distinguishes "slightly less faithful texture" from
-"draws vessels that do not exist". Within the super-resolved arm, PSNR cannot even rank the tiles:
+A 1.3 dB gap sits beside a roughly tenfold gap in invented vessels.
 
-![Per-tile PSNR against audited invented objects: no relationship, AUC
-0.59](results/figures/psnr_vs_detection_delta.png)
+**Why the score can't see a phantom.** Here is an illustrative case. A tile with PSNR 28.8 dB has
+$\text{MSE} = 255^2 / 10^{2.88} \approx 86$. Paint a 50-pixel phantom, each pixel off by 80 levels,
+into a $1024 \times 1024$ tile:
 
-Low PSNR predicts a tile carrying an invented object with AUC 0.59 (p = 0.17), Spearman rho = -0.11
-(p = 0.17). A coin flip.
+$$\Delta\text{MSE} = \frac{50 \times 80^2}{1024^2} \approx 0.31, \qquad
+\Delta\text{PSNR} = 10\log_{10}\frac{86}{86.31} \approx -0.016 \text{ dB}$$
 
-**And this is where I got it wrong the first time.** Before the audit existed, the same plot looked
-genuinely predictive — AUC 0.68, p = 0.0005 — and I nearly wrote that up. It was a confound. PSNR
-tracks how *busy* a scene is (Spearman rho = -0.44 against labelled object count, p = 2e-08), and
-busy scenes are exactly where the unlabelled boats live. So "low PSNR predicts invention" was really
-"low PSNR predicts clutter, and clutter is where the real unlabelled vessels are". Counting invented
-objects without going and looking at them reproduces that mistake, and most of the first version of
-this project *was* that mistake. See the audit section.
+A vessel that does not exist moves the score by about one-sixtieth of a decibel.
+
+**Within the GAN's own output, PSNR fails to identify which tiles carry a phantom.**
+
+- **AUC = 0.59** ($p = 0.17$), where $\text{AUC} = \Pr\big(\text{PSNR}_{\text{phantom tile}} < \text{PSNR}_{\text{clean tile}}\big)$ for a random pair. A value of 0.5 is a coin toss.
+- **Spearman $\rho_s = -0.11$** ($p = 0.17$), where $\rho_s = 1 - \dfrac{6\sum_i d_i^2}{n(n^2-1)}$ and $d_i$ is the gap between tile $i$'s PSNR rank and its invention rank. A value of 0 means no relationship.
+
+**A result I nearly published, and why it was wrong.** Before the hand audit, PSNR looked predictive:
+AUC 0.68, $p = 0.0005$. The cause was a confound, a third variable driving both measurements:
+
+$$\text{busy scene} \;\Rightarrow\; \text{low PSNR} \quad(\rho_s = -0.44,\; p = 2 \times 10^{-8}), \qquad
+\text{busy scene} \;\Rightarrow\; \text{more unlabelled real boats}$$
+
+So "low PSNR predicts invention" meant "low PSNR predicts clutter". Once each box was checked against
+the original, the relationship disappeared. Counting objects without looking at them reproduces that
+mistake, which is why the audit exists.
 
 ## Why the GAN does this
 
