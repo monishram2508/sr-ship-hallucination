@@ -83,6 +83,7 @@ On Colab, copy `v2/kaggle_upload/` to Drive as `MyDrive/sr-ship-v2-trainset` and
 ### 4–7. Evaluation, audit, statistics (local)
 
 ```bash
+.venv/bin/python v2/scripts/checkpoint3.py            # runs comparable? learned? + training curves
 .venv/bin/python v2/scripts/04_predict.py             # every model in v2/runs/ + the v1 detector
 .venv/bin/python v2/scripts/05_eval_setA.py           # exits non-zero if v1's numbers don't reproduce
 .venv/bin/python v2/scripts/06_eval_setB_firing.py    # same gate for Set B
