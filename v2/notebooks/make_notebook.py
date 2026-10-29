@@ -99,10 +99,16 @@ else:
         print(cond, seed, f"{info['seconds'] / 60:.1f} min", info["optimizer"], info["lr0_resolved"],
               "batch", info["batch_used"])"""
 
-ZIP = """if RUN == "timing":
-    kt.zip_runs(RUNS / "_timing", ["M_SR_s0"], OUT / "v2_runs_timing.zip", include_weights=False)
+ZIP = """import zipfile
+if RUN == "timing":
+    zip_path = OUT / "v2_runs_timing.zip"
+    kt.zip_runs(RUNS / "_timing", ["M_SR_s0"], zip_path, include_weights=False)
 else:
-    kt.zip_runs(RUNS, [f"{c}_s{s}" for c, s in PLAN[RUN]], OUT / f"v2_runs_{RUN}.zip")"""
+    zip_path = OUT / f"v2_runs_{RUN}.zip"
+    kt.zip_runs(RUNS, [f"{c}_s{s}" for c, s in PLAN[RUN]], zip_path)
+with zipfile.ZipFile(zip_path, "a") as z:      # the cross-device check (LR hashes, SR PSNR vs local)
+    z.write(WORK / "prepare_report.json", "prepare_report.json")
+print("-> added prepare_report.json")"""
 
 
 def cell(kind, src):
