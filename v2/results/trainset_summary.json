@@ -1,0 +1,69 @@
+{
+  "pools": {
+    "windows_exact_1024": 15047,
+    "positive_pool": 1754,
+    "negative_pool_strict": 13168,
+    "negative_excluded_touching_ship": 125,
+    "hard_negative_pool": 2625
+  },
+  "n_tiles": 900,
+  "n_sources": 419,
+  "by_split_kind": {
+    "train_pos": 534,
+    "train_hard_neg": 137,
+    "train_rand_neg": 138,
+    "val_pos": 66,
+    "val_hard_neg": 13,
+    "val_rand_neg": 12
+  },
+  "ships": {
+    "train": 16435,
+    "val": 2039
+  },
+  "clipped_polygons": 811,
+  "positives_ultralytics_would_drop_unclipped": {
+    "tiles": 166,
+    "ships_on_them": 11024
+  },
+  "val_sources": [
+    "P0020",
+    "P0025",
+    "P0270",
+    "P0276",
+    "P0288",
+    "P0327",
+    "P0438",
+    "P0533",
+    "P0544",
+    "P0573",
+    "P0707",
+    "P0724",
+    "P0759",
+    "P0775",
+    "P0873",
+    "P0896",
+    "P0915",
+    "P0934",
+    "P1043",
+    "P1168",
+    "P1288",
+    "P1321",
+    "P1333",
+    "P1353",
+    "P1382",
+    "P1467",
+    "P1517",
+    "P1533",
+    "P1597",
+    "P1846",
+    "P2004",
+    "P2014",
+    "P2159",
+    "P2522",
+    "P2676",
+    "P2691",
+    "P2692",
+    "P2756",
+    "P2769"
+  ]
+}
