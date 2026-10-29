@@ -11,6 +11,22 @@ invent more vessels than the bicubic pipeline?
 
 Either answer is a result. If retraining on SR removes most of the invention, the write-up says so.
 
+## Status
+
+| Phase | State | Evidence |
+|---|---|---|
+| 0 SR audit | done | `results/phase0_sr_audit.md`: no SR bug (official code bit-identical); grey tiles come out coloured, v1b barely moves firing; **v1's Set A evaluation was truncated by `max_det=300`** on 2 dense tiles (recall understated 2.4–2.7 points for every version, SR-minus-bicubic gap −0.020 → −0.022) |
+| eval code | gated | v2 reproduces v1's Set A TP/FP/FN exactly with v1's own call, all 900 Set B per-tile counts, and v1's audited invention (both bands, ± P1751) |
+| 1 training set | done | `results/trainset_summary.json`: 900 tiles from 419 images; clipping keeps 166 positive tiles (11,024 ships) ultralytics would otherwise drop |
+| 2 local half | done | LR hashes in the manifest, 5 check tiles |
+| 3 training | **waiting at checkpoint 2** | upload folder 315 MB (`results/kaggle_upload_size.json`); notebook and library smoke-tested end to end on 14 tiles locally, including the timing path |
+| 4–7 | code written and gated on the v1 rows | needs the trained models; 11_summary.py is written once real numbers exist |
+
+Two changes from the plan below, both forced by what the gates found: the Set A gate checks a
+second v1 row predicted exactly as v1 did (`v1_offshelf_v1settings`, conf 0.25, max_det 300), and
+a detection that v1 itself audited keeps its own v1 verdict in the recount rather than its
+cluster's, so v1's numbers reproduce exactly.
+
 ---
 
 ## 1. Ground rules this plan keeps
