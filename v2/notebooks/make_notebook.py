@@ -28,21 +28,36 @@ DEVICE = 0"""
 PATHS = """import json, sys
 from pathlib import Path
 
+def find_upload(root):
+    \"\"\"Locate code/v2 and data/ however the platform mounted the dataset; if it is still a zip,
+    extract it once to /tmp/upload.\"\"\"
+    root = Path(root)
+    hits = list(root.glob("**/code/v2/kaggle_train.py"))
+    if not hits:
+        import zipfile
+        zips = list(root.glob("**/*.zip"))
+        assert zips, f"no dataset found under {root}: attach it with 'Add Input'"
+        zipfile.ZipFile(zips[0]).extractall("/tmp/upload")
+        root = Path("/tmp/upload")
+        hits = list(root.glob("**/code/v2/kaggle_train.py"))
+    data = next(root.glob("**/data/trainset_manifest.csv")).parent
+    return hits[0].parent, data
+
+
 if PLATFORM == "kaggle":
-    hit = next(Path("/kaggle/input").glob("**/code/v2/kaggle_train.py"))
-    UPLOAD = hit.parents[2]                      # <dataset>/code/v2/kaggle_train.py -> <dataset>
+    CODE_V2, DATA = find_upload("/kaggle/input")
     OUT = Path("/kaggle/working")
 elif PLATFORM == "colab":
     from google.colab import drive
     drive.mount("/content/drive")
-    UPLOAD = Path("/content/drive/MyDrive/sr-ship-v2-trainset")   # the upload folder, copied to Drive
+    CODE_V2, DATA = find_upload("/content/drive/MyDrive/sr-ship-v2-trainset")  # the upload, copied to Drive
     OUT = Path("/content/drive/MyDrive/sr-ship-v2-output")
 else:
     raise ValueError(PLATFORM)
 WORK = Path("/tmp/v2work")                       # generated training images (not persisted)
 RUNS = OUT / "runs"
 RUNS.mkdir(parents=True, exist_ok=True)
-print(UPLOAD, OUT)"""
+print("code:", CODE_V2, "\\ndata:", DATA, "\\noutput:", OUT)"""
 
 INSTALL = """# pinned to the local environment; torch/torchvision come from the platform's CUDA build.
 # A pin with no wheel for this platform falls back to the latest release and says so, rather than
@@ -53,13 +68,13 @@ for pin in ("ultralytics==8.4.171", "spandrel==0.4.2", "opencv-python==5.0.0.93"
         print(f"!! no {pin} for this platform; installing the latest {pin.split('==')[0]} instead")
         subprocess.run([sys.executable, "-m", "pip", "install", "-q", pin.split("==")[0]], check=True)"""
 
-ENV = """sys.path.insert(0, str(UPLOAD / "code" / "v2"))
+ENV = """sys.path.insert(0, str(CODE_V2))
 import kaggle_train as kt
 print(json.dumps(kt._env(), indent=2))
 !nvidia-smi --query-gpu=name,memory.total --format=csv"""
 
 PREPARE = """rep_path = WORK / "prepare_report.json"
-rep = json.loads(rep_path.read_text()) if rep_path.exists() else kt.prepare(UPLOAD / "data", WORK, device="cuda")
+rep = json.loads(rep_path.read_text()) if rep_path.exists() else kt.prepare(DATA, WORK, device="cuda")
 if rep["lr_hash_mismatch"]:
     print(f"NOTE: {rep['lr_hash_mismatch']} LR tiles differ bit-wise from the local ones "
           "(platform rounding); training images are still made with v1's functions.")
@@ -70,7 +85,7 @@ TRAIN = """PLAN = {
     "seeds12": [(c, s) for s in (1, 2) for c in ("M_HR", "M_SR", "M_BIC")],
 }
 PLAN["all"] = PLAN["seed0"] + PLAN["seeds12"]
-manifest = UPLOAD / "data" / "trainset_manifest.csv"
+manifest = DATA / "trainset_manifest.csv"
 
 if RUN == "timing":
     kt.time_epochs(WORK, RUNS / "_timing", device=DEVICE)
