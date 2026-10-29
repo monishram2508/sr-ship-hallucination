@@ -1,0 +1,221 @@
+{
+  "v1_offshelf": {
+    "condition": "v1",
+    "seed": "",
+    "bicubic": {
+      "conf0.25": {
+        "lower": {
+          "all": {
+            "tiles": 2,
+            "n_tiles": 150,
+            "pct": 1.3333333333333333,
+            "pct_ci95": [
+              0.0,
+              3.3333333333333335
+            ],
+            "boxes": 2
+          },
+          "no_dominant": {
+            "tiles": 2,
+            "n_tiles": 149,
+            "pct": 1.342281879194631,
+            "pct_ci95": [
+              0.0,
+              3.3557046979865772
+            ],
+            "boxes": 2
+          }
+        },
+        "upper": {
+          "all": {
+            "tiles": 3,
+            "n_tiles": 150,
+            "pct": 2.0,
+            "pct_ci95": [
+              0.0,
+              4.666666666666667
+            ],
+            "boxes": 3
+          },
+          "no_dominant": {
+            "tiles": 3,
+            "n_tiles": 149,
+            "pct": 2.0134228187919465,
+            "pct_ci95": [
+              0.0,
+              4.697986577181208
+            ],
+            "boxes": 3
+          }
+        },
+        "verdict_boxes": {
+          "ship": 10,
+          "not_ship": 2,
+          "unsure": 1
+        }
+      },
+      "conf0.5": {
+        "lower": {
+          "all": {
+            "tiles": 1,
+            "n_tiles": 150,
+            "pct": 0.6666666666666666,
+            "pct_ci95": [
+              0.0,
+              2.0
+            ],
+            "boxes": 1
+          },
+          "no_dominant": {
+            "tiles": 1,
+            "n_tiles": 149,
+            "pct": 0.6711409395973155,
+            "pct_ci95": [
+              0.0,
+              2.013422818791946
+            ],
+            "boxes": 1
+          }
+        },
+        "upper": {
+          "all": {
+            "tiles": 1,
+            "n_tiles": 150,
+            "pct": 0.6666666666666666,
+            "pct_ci95": [
+              0.0,
+              2.0
+            ],
+            "boxes": 1
+          },
+          "no_dominant": {
+            "tiles": 1,
+            "n_tiles": 149,
+            "pct": 0.6711409395973155,
+            "pct_ci95": [
+              0.0,
+              2.013422818791946
+            ],
+            "boxes": 1
+          }
+        },
+        "verdict_boxes": {
+          "not_ship": 1,
+          "ship": 1
+        }
+      }
+    },
+    "sr": {
+      "conf0.25": {
+        "lower": {
+          "all": {
+            "tiles": 21,
+            "n_tiles": 150,
+            "pct": 14.0,
+            "pct_ci95": [
+              8.666666666666668,
+              20.0
+            ],
+            "boxes": 83
+          },
+          "no_dominant": {
+            "tiles": 20,
+            "n_tiles": 149,
+            "pct": 13.422818791946309,
+            "pct_ci95": [
+              8.053691275167784,
+              19.463087248322147
+            ],
+            "boxes": 38
+          }
+        },
+        "upper": {
+          "all": {
+            "tiles": 24,
+            "n_tiles": 150,
+            "pct": 16.0,
+            "pct_ci95": [
+              10.0,
+              22.0
+            ],
+            "boxes": 88
+          },
+          "no_dominant": {
+            "tiles": 23,
+            "n_tiles": 149,
+            "pct": 15.436241610738255,
+            "pct_ci95": [
+              10.06711409395973,
+              21.476510067114095
+            ],
+            "boxes": 43
+          }
+        },
+        "verdict_boxes": {
+          "ship": 52,
+          "not_ship": 83,
+          "unsure": 5
+        }
+      },
+      "conf0.5": {
+        "lower": {
+          "all": {
+            "tiles": 4,
+            "n_tiles": 150,
+            "pct": 2.6666666666666665,
+            "pct_ci95": [
+              0.6666666666666667,
+              5.333333333333334
+            ],
+            "boxes": 12
+          },
+          "no_dominant": {
+            "tiles": 3,
+            "n_tiles": 149,
+            "pct": 2.0134228187919465,
+            "pct_ci95": [
+              0.0,
+              4.697986577181208
+            ],
+            "boxes": 5
+          }
+        },
+        "upper": {
+          "all": {
+            "tiles": 5,
+            "n_tiles": 150,
+            "pct": 3.3333333333333335,
+            "pct_ci95": [
+              0.6666666666666667,
+              6.666666666666667
+            ],
+            "boxes": 13
+          },
+          "no_dominant": {
+            "tiles": 4,
+            "n_tiles": 149,
+            "pct": 2.684563758389262,
+            "pct_ci95": [
+              0.6711409395973155,
+              5.369127516778524
+            ],
+            "boxes": 6
+          }
+        },
+        "verdict_boxes": {
+          "ship": 18,
+          "not_ship": 12,
+          "unsure": 1
+        }
+      }
+    }
+  },
+  "_regression_gate": {
+    "passed": true,
+    "mismatches": [],
+    "reference": [
+      "results/setB_audited.json",
+      "results/setB_audited_no_P1751.json"
+    ]
+  }
+}
