@@ -36,6 +36,9 @@ SETS = ("setA", "setB")
 assert TILE == v1.TILE and CFG["scale"] == v1.SCALE and CFG["blur_sigma"] == v1.BLUR_SIGMA, \
     "v2/config.yaml disagrees with v1 scripts/common.py"
 
+# one fixed colour per condition for every v2 figure (validated categorical slots 1-3, light surface)
+CONDITION_COLOURS = {"M_HR": "#2a78d6", "M_SR": "#eb6834", "M_BIC": "#1baf7a", "v1": "#6b6a64"}
+
 PRED_FIELDS = ["model", "condition", "seed", "set", "version", "tile", "conf",
                "x1", "y1", "x2", "y2", "x3", "y3", "x4", "y4", "cx", "cy", "w", "h", "r"]
 
