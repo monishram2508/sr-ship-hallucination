@@ -16,6 +16,9 @@ the regions v1 never audited.
      v1's own render(). 25 v1 crops, stratified by pass-1 verdict, are re-rendered the same way and
      mixed in as hidden repeats (for Cohen's kappa). All crops are shuffled with seed 0 BEFORE ids
      are assigned, so an id carries no information.
+  5. The labels file lists the priority crops first (hidden repeats, and every cluster with a
+     member in config audit.priority_cells, i.e. the cells C1-C3 read), each block in shuffled id
+     order, so labelling can stop after the priority block with every comparison still complete.
 
 Writes v2/results/audit/{clusters.csv, detections.csv, audit_key.csv, audit_labels.csv,
 build_summary.json} and crops to v2/results/audit/crops/ (gitignored). Refuses to overwrite
@@ -185,10 +188,13 @@ def main():
         w.writerow(["crop_id", "kind", "tile", "cluster", "v1_crop_id", "crop_x0", "crop_y0", "crop_x1", "crop_y1"])
         for c in sorted(crops, key=lambda c: c["crop_id"]):
             w.writerow([c["crop_id"], c["kind"], c["tile"], c["cluster"], c["v1_crop_id"], *m08.crop_box(c)])
+    cells = {tuple(p) for p in A["priority_cells"]}
+    priority = {c["id"] for c in new if any((d["condition"], d["version"]) in cells for d in c["members"])}
+    is_priority = {c["crop_id"]: c["kind"] == "repeat" or c["cluster"] in priority for c in crops}
     with open(LABELS, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["crop_id", "verdict"])
-        for c in sorted(crops, key=lambda c: c["crop_id"]):
+        for c in sorted(crops, key=lambda c: (not is_priority[c["crop_id"]], c["crop_id"])):
             w.writerow([c["crop_id"], ""])
     with open(AUD / "clusters.csv", "w", newline="") as f:
         w = csv.writer(f)
@@ -209,10 +215,12 @@ def main():
     summ = {"n_detections_pooled": len(dets), "n_clusters": len(clusters),
             "clusters_by_source": dict(Counter(c["source"] for c in clusters)),
             "n_new_crops": len(new), "n_repeat_crops": len(reps), "repeat_allocation_by_pass1": alloc,
-            "n_crops_to_label": len(crops), "models": [m for m, _, _ in pooled], "versions": versions}
+            "n_crops_to_label": len(crops), "n_priority_crops": sum(is_priority.values()),
+            "priority_cells": A["priority_cells"], "models": [m for m, _, _ in pooled], "versions": versions}
     (AUD / "build_summary.json").write_text(json.dumps(summ, indent=2))
     print(json.dumps(summ, indent=2))
-    print(f"\n{len(crops)} crops to label ({len(new)} new, {len(reps)} hidden repeats). "
+    print(f"\n{len(crops)} crops to label ({len(new)} new, {len(reps)} hidden repeats); the first "
+          f"{summ['n_priority_crops']} cover every pre-registered comparison. "
           "Next: .venv/bin/python v2/scripts/08_label.py")
 
 

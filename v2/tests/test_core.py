@@ -132,3 +132,10 @@ def test_max_det_hits_flags_only_caps_above_threshold(tmp_path):
     assert [(h["model"], h["tile"], h["counts_exact"]) for h in hits] == [("M_HR_s0", "a", True),
                                                                         ("M_HR_s0", "b", False)]
     assert not c2.print_max_det_hits(hits, 0.25) and c2.print_max_det_hits(hits[:1], 0.25)
+
+
+def test_priority_cells_cover_every_comparison():
+    m10 = load("scripts/10_stats.py")
+    cells = {tuple(p) for p in c2.CFG["audit"]["priority_cells"]}
+    needed = {cell for pair in m10.COMPARISONS.values() for cell in pair} | {("M_HR", "hr")}   # + C3 ceiling
+    assert needed <= cells

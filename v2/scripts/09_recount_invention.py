@@ -11,8 +11,11 @@ Each pooled detection (> 0.25) gets a verdict about the ORIGINAL tile:
 
 A tile is "invented" for (model, version, threshold, band) when at least one detection above the
 threshold carries an invention verdict. Rates are reported on all 150 tiles and without P1751.
-A blank or invalid verdict is a hard error, as in v1. Hidden repeats give Cohen's kappa against
-v1's pass-1 verdicts (same rendering) and v1's final verdicts.
+An invalid verdict is a hard error, as in v1, and so is a blank in any cell the comparisons read
+(config audit.priority_cells, plus the v1 detector's hr/bicubic/sr rows). Any other (model,
+version) cell that still has an unlabelled detection is left out whole, never counted partially,
+and listed under "_not_audited". Hidden repeats give Cohen's kappa against v1's pass-1 verdicts
+(same rendering) and v1's final verdicts.
 
 REGRESSION GATE: the v1 detector's sr and bicubic rows must reproduce results/setB_audited.json and
 results/setB_audited_no_P1751.json (tiles and boxes, both bands, both thresholds).
@@ -56,10 +59,8 @@ def verdicts(regression_only):
     bad = [(c, v) for c, v in labs.items() if v and v not in VALID]
     if bad:
         sys.exit(f"INVALID verdicts: {bad[:10]}")
-    blank = [c for c, v in labs.items() if not v]
-    if blank and not regression_only:
-        sys.exit(f"UNLABELLED: {len(blank)} of {len(labs)} v2 crops have no verdict ({blank[:5]}). "
-                 "A blank is not a verdict. Run v2/scripts/08_label.py")
+    if not regression_only:
+        print(f"{sum(1 for v in labs.values() if v)} of {len(labs)} v2 crops labelled")
     clusters = {r["cluster"]: r for r in csv.DictReader(open(AUD / "clusters.csv"))}
     cluster_verdict = {k: (c["verdict"] or labs.get(c["crop_id"], "")) for k, c in clusters.items()}
     v1key = {(r["version"], r["tile"], int(r["box_idx"])): r["crop_id"]
@@ -78,10 +79,22 @@ def detection_rows(cluster_verdict, v1key, v1final, regression_only):
             continue
         own = v1key.get((d["version"], d["tile"], int(d["rank"]))) if d["model"] == V1_MODEL else None
         verdict = v1final[own] if own else cluster_verdict[d["cluster"]]
-        if not verdict:
-            sys.exit(f"detection on {d['tile']} (cluster {d['cluster']}) has no verdict")
-        rows.append({**d, "conf": float(d["conf"]), "verdict": verdict})
+        rows.append({**d, "conf": float(d["conf"]), "verdict": verdict})     # "" = unlabelled, see audited_cells
     return rows
+
+
+def audited_cells(dets):
+    """-> {(model, version): unlabelled detections} for the cells left out. Exits if any of them is a
+    cell the comparisons need: a blank is not a verdict."""
+    cells = {tuple(p) for p in CFG["audit"]["priority_cells"]}
+    missing = Counter((d["model"], d["version"]) for d in dets if not d["verdict"])
+    cond = {d["model"]: d["condition"] for d in dets}
+    needed = [k for k in missing if (cond[k[0]], k[1]) in cells
+              or (k[0] == V1_MODEL and k[1] in ("hr", "bicubic", "sr"))]
+    if needed:
+        sys.exit(f"UNLABELLED: {sum(missing[k] for k in needed)} detections in cells the comparisons read "
+                 f"have no verdict ({needed[:4]}). Keep labelling: .venv/bin/python v2/scripts/08_label.py")
+    return missing
 
 
 def rate(hits):
@@ -110,6 +123,7 @@ def main():
     args = ap.parse_args()
     cv, v1key, v1final, reps = verdicts(args.regression_only)
     dets = detection_rows(cv, v1key, v1final, args.regression_only)
+    skipped = audited_cells(dets)
     ids = read_ids("setB")
     subsets = {"all": ids, "no_dominant": [t for t in ids if t != DOM]}
     models = sorted({(d["model"], d["condition"], d["seed"]) for d in dets}, key=lambda m: (m[0] != V1_MODEL, m[0]))
@@ -119,6 +133,8 @@ def main():
         res[model] = {"condition": cond, "seed": seed}
         mine = [d for d in dets if d["model"] == model]
         for v in versions:
+            if (model, v) in skipped:
+                continue
             for c in CONFS:
                 sel = [d for d in mine if d["version"] == v and d["conf"] > c]
                 for band, inv in BANDS.items():
@@ -135,6 +151,7 @@ def main():
     bad = regression_gate(res)
     res["_regression_gate"] = {"passed": not bad, "mismatches": bad,
                                "reference": ["results/setB_audited.json", "results/setB_audited_no_P1751.json"]}
+    res["_not_audited"] = [{"model": m, "version": v, "unlabelled_detections": n} for (m, v), n in sorted(skipped.items())]
     if reps:
         new, p1, fin = zip(*reps)
         res["_kappa"] = {"n_repeats": len(reps), "vs_v1_pass1": kappa(list(new), list(p1)),
@@ -152,7 +169,7 @@ def main():
     for m in res:
         if m.startswith("_"):
             continue
-        for v in versions:
+        for v in [v for v in versions if v in res[m]]:
             for c in CONFS:
                 e = res[m][v][f"conf{c}"]
                 print(f"{m:14s} {v:11s} {c:4.2f}  lower {e['lower']['all']['pct']:5.1f}% "
@@ -160,6 +177,9 @@ def main():
                       f"{e['upper']['no_dominant']['pct']:5.1f}%)")
     if "_kappa" in res:
         print(f"kappa vs v1 pass 1: {res['_kappa']['vs_v1_pass1']:.3f}  vs v1 final: {res['_kappa']['vs_v1_final']:.3f}")
+    if skipped:
+        print(f"not audited (secondary cells with unlabelled crops, left out whole): "
+              f"{', '.join(f'{m}/{v}' for m, v in sorted(skipped))}")
     if bad:
         print("\nREGRESSION GATE FAILED:\n  " + "\n  ".join(bad))
         sys.exit(1)

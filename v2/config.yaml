@@ -63,3 +63,7 @@ audit:
   inherit_iou: 0.5
   n_repeats: 25
   pad: 48
+  # the (condition, version) cells the pre-registered comparisons read: C1, C2 (10_stats.COMPARISONS)
+  # and C3's M_HR-on-original ceiling. Their crops (plus the hidden repeats) are labelled first;
+  # 09 refuses to run while any of them is unlabelled, and reports other cells only when complete.
+  priority_cells: [[M_SR, sr], [M_HR, sr], [M_BIC, bicubic], [M_HR, hr]]
