@@ -28,6 +28,14 @@ second v1 row predicted exactly as v1 did (`v1_offshelf_v1settings`, conf 0.25, 
 a detection that v1 itself audited keeps its own v1 verdict in the recount rather than its
 cluster's, so v1's numbers reproduce exactly.
 
+A third, decided after the audit was built and **before any verdict existed**: pooling every model
+and version gave 1,218 crops, eight times v1's audit. The labels file now lists first the 767 crops
+the pre-registered comparisons read (C1, C2 and C3's M_HR-on-original cells, config
+`audit.priority_cells`, plus all 25 hidden repeats), each block still in shuffled id order. 09
+refuses to run while any of those is unlabelled; a secondary cell (e.g. M_HR on bicubic, any
+sr_greyfix) is reported only when every one of its detections is labelled, and is otherwise listed
+under `_not_audited`, never counted partially.
+
 ---
 
 ## 1. Ground rules this plan keeps
