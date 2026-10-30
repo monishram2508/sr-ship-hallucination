@@ -117,3 +117,18 @@ def test_binary_comparison_pairs_by_seed():
     assert r["diff_mean"] == pytest.approx(100 * (10 - 3) / n)
     lo, hi = r["seed_avg_diff_ci95"]
     assert lo <= r["diff_mean"] <= hi
+
+
+def test_max_det_hits_flags_only_caps_above_threshold(tmp_path):
+    import json
+    for name, keys in {"M_HR_s0": ["setB/sr/a", "setB/sr/b", "setA/sr/a"],
+                       "v1_offshelf_v1settings": ["setB/sr/a"]}.items():
+        (tmp_path / f"{name}.capped.json").write_text(json.dumps(keys))
+    conf = {"a": [0.9, 0.03], "b": [0.9, 0.3]}        # lowest kept: under / over the threshold
+    preds = {(m, s, "sr"): {t: (None, None, np.array(c)) for t, c in conf.items()}
+             for m in ("M_HR_s0", "v1_offshelf_v1settings") for s in ("setA", "setB")}
+    paths = [tmp_path / "M_HR_s0.csv", tmp_path / "v1_offshelf_v1settings.csv", tmp_path / "M_SR_s0.csv"]
+    hits = c2.max_det_hits(paths, preds, "setB", 0.25)
+    assert [(h["model"], h["tile"], h["counts_exact"]) for h in hits] == [("M_HR_s0", "a", True),
+                                                                        ("M_HR_s0", "b", False)]
+    assert not c2.print_max_det_hits(hits, 0.25) and c2.print_max_det_hits(hits[:1], 0.25)

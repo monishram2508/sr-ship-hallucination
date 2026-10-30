@@ -24,7 +24,8 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common_v2 import (CFG, V1_RESULTS, V1_VERSIONS, V2_RESULTS, read_ids, gt_xywhr, greedy_tp,  # noqa: E402
-                       ap50, above, load_predictions, prediction_files, models_in)
+                       ap50, above, load_predictions, prediction_files, models_in, max_det_hits,
+                       print_max_det_hits)
 
 CONFS = CFG["eval"]["confs"]
 IOU_T = CFG["eval"]["iou"]
@@ -106,6 +107,7 @@ def main():
     res["_regression_gate"] = {"passed": not bad, "mismatches": bad, "checked_model": "v1_offshelf_v1settings",
                                "reference": "results/setA_fixed_threshold.json"}
     res["_v1_max_det_truncation"] = truncation(per_tile)
+    res["_max_det_hits"] = max_det_hits(files, preds, "setA", min(CONFS))
     V2_RESULTS.mkdir(parents=True, exist_ok=True)
     (V2_RESULTS / "setA_metrics.json").write_text(json.dumps(res, indent=2))
     with open(V2_RESULTS / "setA_per_tile.csv", "w", newline="") as f:
@@ -134,6 +136,8 @@ def main():
         print(f"v1 max_det=300 truncation, {k}: {len(tiles)} tiles, {lost} ship boxes cut "
               f"({', '.join(t['tile'] for t in tiles)})")
     print(f"-> {V2_RESULTS / 'setA_metrics.json'}")
+    if not print_max_det_hits(res["_max_det_hits"], min(CONFS)):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ v1 code is imported read-only: scripts/common.py by plain import, and the number
 (e.g. 03_degrade_sr.py, whose degrade() and run_sr() define the v1 pipeline) through importlib, so
 v2 runs the exact v1 functions instead of a copy that could drift.
 """
-import csv, hashlib, importlib.util, sys
+import csv, hashlib, importlib.util, json, sys
 from pathlib import Path
 
 import numpy as np
@@ -181,3 +181,40 @@ def models_in(paths):
 def above(conf, c):
     """Ultralytics keeps a detection when conf > threshold (strictly), so v2 does too."""
     return np.asarray(conf) > c
+
+
+def max_det_hits(paths, preds, setname, threshold):
+    """Images of one set where 04_predict hit max_det (listed in {model}.capped.json), with the lowest
+    ship confidence kept. The cap drops the lowest-confidence boxes first, so the counts above
+    `threshold` are exact when that lowest kept confidence is <= threshold; only the AP50 tail lost
+    boxes. (For the 15-class v1 detector the lowest kept *ship* is at or above the lowest kept box of
+    any class, so the test stays safe.) v1_offshelf_v1settings is skipped: its max_det 300 is v1's
+    own call, reported by 05's truncation table."""
+    hits = []
+    for p in paths:
+        capped = p.with_suffix(".capped.json")
+        if p.stem == "v1_offshelf_v1settings" or not capped.exists():
+            continue
+        for key in json.loads(capped.read_text()):
+            s, v, t = key.split("/")
+            if s != setname:
+                continue
+            lowest = float(preds[(p.stem, s, v)][t][2][-1])
+            hits.append({"model": p.stem, "version": v, "tile": t, "lowest_kept_conf": lowest,
+                         "counts_exact": lowest <= threshold})
+    return hits
+
+
+def print_max_det_hits(hits, threshold):
+    """One line when every capped image is harmless, the offending images otherwise. -> all exact?"""
+    bad = [h for h in hits if not h["counts_exact"]]
+    if not hits:
+        print(f"max_det {CFG['predict']['max_det']}: no image hit it")
+    elif not bad:
+        lo = [h["lowest_kept_conf"] for h in hits]
+        print(f"max_det {CFG['predict']['max_det']}: {len(hits)} images hit it, lowest kept conf "
+              f"{min(lo):.3f}-{max(lo):.3f} <= {threshold}, so every thresholded count is exact")
+    for h in bad:
+        print(f"MAX_DET TRUNCATION: {h['model']} {h['version']} {h['tile']} kept nothing below "
+              f"{h['lowest_kept_conf']:.3f}; counts at {threshold} may be short. Raise predict.max_det.")
+    return not bad

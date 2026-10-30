@@ -18,7 +18,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common_v2 import (CFG, V1_RESULTS, V2_RESULTS, read_ids, above, load_predictions,  # noqa: E402
-                       prediction_files, models_in, v1)
+                       prediction_files, models_in, max_det_hits, print_max_det_hits, v1)
 
 CONFS = CFG["eval"]["confs"]
 
@@ -74,6 +74,7 @@ def main():
     bad, n_checked = regression_gate(per)
     res["_regression_gate"] = {"passed": not bad, "n_checked": n_checked, "mismatches": bad[:50],
                                "reference": "results/setB_counts.csv"}
+    res["_max_det_hits"] = max_det_hits(files, preds, "setB", min(CONFS))
     V2_RESULTS.mkdir(parents=True, exist_ok=True)
     (V2_RESULTS / "setB_firing.json").write_text(json.dumps(res, indent=2))
     with open(V2_RESULTS / "setB_per_tile_counts.csv", "w", newline="") as f:
@@ -99,6 +100,8 @@ def main():
         sys.exit(1)
     print(f"\nregression gate passed: all {n_checked} v1 per-tile counts reproduced exactly")
     print(f"-> {V2_RESULTS / 'setB_firing.json'}")
+    if not print_max_det_hits(res["_max_det_hits"], min(CONFS)):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
