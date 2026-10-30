@@ -28,6 +28,13 @@ DEVICE = 0"""
 PATHS = """import json, sys
 from pathlib import Path
 
+PLAN = {
+    "seed0": [(c, 0) for c in ("M_HR", "M_SR", "M_BIC")],
+    "seeds12": [(c, s) for s in (1, 2) for c in ("M_HR", "M_SR", "M_BIC")],
+}
+PLAN["all"] = PLAN["seed0"] + PLAN["seeds12"]
+assert RUN == "timing" or RUN in PLAN, f"RUN = {RUN!r}: use one of {['timing', *PLAN]}"  # fail before the 10-min prepare
+
 def find_upload(root):
     \"\"\"Locate code/v2 and data/ however the platform mounted the dataset; if it is still a zip,
     extract it once to /tmp/upload.\"\"\"
@@ -80,12 +87,7 @@ if rep["lr_hash_mismatch"]:
           "(platform rounding); training images are still made with v1's functions.")
 print("check tiles, PSNR of this GPU's SR vs local SR (dB):", rep["check_sr_psnr_vs_local_db"])"""
 
-TRAIN = """PLAN = {
-    "seed0": [(c, 0) for c in ("M_HR", "M_SR", "M_BIC")],
-    "seeds12": [(c, s) for s in (1, 2) for c in ("M_HR", "M_SR", "M_BIC")],
-}
-PLAN["all"] = PLAN["seed0"] + PLAN["seeds12"]
-manifest = DATA / "trainset_manifest.csv"
+TRAIN = """manifest = DATA / "trainset_manifest.csv"
 
 if RUN == "timing":
     kt.time_epochs(WORK, RUNS / "_timing", device=DEVICE)
