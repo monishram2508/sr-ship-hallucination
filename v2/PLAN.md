@@ -19,8 +19,9 @@ Either answer is a result. If retraining on SR removes most of the invention, th
 | eval code | gated | v2 reproduces v1's Set A TP/FP/FN exactly with v1's own call, all 900 Set B per-tile counts, and v1's audited invention (both bands, ± P1751) |
 | 1 training set | done | `results/trainset_summary.json`: 900 tiles from 419 images; clipping keeps 166 positive tiles (11,024 ships) ultralytics would otherwise drop |
 | 2 local half | done | LR hashes in the manifest, 5 check tiles |
-| 3 training | **waiting at checkpoint 2** | upload folder 315 MB (`results/kaggle_upload_size.json`); notebook and library smoke-tested end to end on 14 tiles locally, including the timing path |
-| 4–7 | code written and gated on the v1 rows | needs the trained models; 11_summary.py is written once real numbers exist |
+| 3 training | seed 0 done, **checkpoint 3 passed**; seeds 1–2 running | `results/timing_projection.json` (T4); `results/checkpoint_runs.json` and `results/figures/training_curves.png`: equal budgets (10,150–10,200 batches), batch 8 kept, AdamW lr0 0.002 in every run, no NaN, losses fell |
+| 4–5 eval | seed 0 done | `results/setA_metrics.json`, `results/setB_firing.json`; both v1 regression gates still pass. 6 SR images hit max_det 1000 at conf 0.01; none lost a box above 0.25 (`_max_det_hits`) |
+| 6–7 | code written and gated on the v1 rows | the audit is built once, after seeds 1–2; 11_summary.py is written once all real numbers exist |
 
 Two changes from the plan below, both forced by what the gates found: the Set A gate checks a
 second v1 row predicted exactly as v1 did (`v1_offshelf_v1settings`, conf 0.25, max_det 300), and

@@ -1,0 +1,53 @@
+{
+  "runs": [
+    {
+      "run": "M_BIC_s0",
+      "condition": "M_BIC",
+      "seed": 0,
+      "epochs": 50,
+      "n_train_images": 1618,
+      "batches_per_epoch": 203,
+      "total_batches": 10150,
+      "batch_used": 8,
+      "optimizer": "AdamW",
+      "lr0": 0.002,
+      "minutes": 35.5,
+      "last_val_map50": 0.95104,
+      "gpu": "Tesla T4",
+      "fails": []
+    },
+    {
+      "run": "M_HR_s0",
+      "condition": "M_HR",
+      "seed": 0,
+      "epochs": 100,
+      "n_train_images": 809,
+      "batches_per_epoch": 102,
+      "total_batches": 10200,
+      "batch_used": 8,
+      "optimizer": "AdamW",
+      "lr0": 0.002,
+      "minutes": 38.4,
+      "last_val_map50": 0.95929,
+      "gpu": "Tesla T4",
+      "fails": []
+    },
+    {
+      "run": "M_SR_s0",
+      "condition": "M_SR",
+      "seed": 0,
+      "epochs": 50,
+      "n_train_images": 1618,
+      "batches_per_epoch": 203,
+      "total_batches": 10150,
+      "batch_used": 8,
+      "optimizer": "AdamW",
+      "lr0": 0.002,
+      "minutes": 36.2,
+      "last_val_map50": 0.94783,
+      "gpu": "Tesla T4",
+      "fails": []
+    }
+  ],
+  "across_runs_fails": []
+}
