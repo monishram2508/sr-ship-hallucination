@@ -19,9 +19,10 @@ Either answer is a result. If retraining on SR removes most of the invention, th
 | eval code | gated | v2 reproduces v1's Set A TP/FP/FN exactly with v1's own call, all 900 Set B per-tile counts, and v1's audited invention (both bands, ± P1751) |
 | 1 training set | done | `results/trainset_summary.json`: 900 tiles from 419 images; clipping keeps 166 positive tiles (11,024 ships) ultralytics would otherwise drop |
 | 2 local half | done | LR hashes in the manifest, 5 check tiles |
-| 3 training | seed 0 done, **checkpoint 3 passed**; seeds 1–2 running | `results/timing_projection.json` (T4); `results/checkpoint_runs.json` and `results/figures/training_curves.png`: equal budgets (10,150–10,200 batches), batch 8 kept, AdamW lr0 0.002 in every run, no NaN, losses fell |
-| 4–5 eval | seed 0 done | `results/setA_metrics.json`, `results/setB_firing.json`; both v1 regression gates still pass. 6 SR images hit max_det 1000 at conf 0.01; none lost a box above 0.25 (`_max_det_hits`) |
-| 6–7 | code written and gated on the v1 rows | the audit is built once, after seeds 1–2; 11_summary.py is written once all real numbers exist |
+| 3 training | done, all 9 runs **passed checkpoint 3** | `results/timing_projection.json` (T4); `results/checkpoint_runs.json` and `results/figures/training_curves.png`: equal budgets (10,150–10,200 batches), batch 8 kept, AdamW lr0 0.002 in every run, no NaN, losses fell |
+| 4–5 eval | done, 3 seeds | `results/setA_metrics.json`, `results/setB_firing.json`, `results/stats.json`; both v1 regression gates still pass; every image that hit max_det 1000 kept boxes down to conf 0.042 or lower, so no count above 0.25 is affected (`_max_det_hits`) |
+| 6 audit | built and frozen, **waiting for labels (checkpoint 4)** | `results/audit/build_summary.json`: 1,218 crops (1,193 new, 25 hidden repeats); the first 767 cover every pre-registered comparison |
+| 7 | code written and gated on the v1 rows | 11_summary.py is written once the invention numbers exist |
 
 Two changes from the plan below, both forced by what the gates found: the Set A gate checks a
 second v1 row predicted exactly as v1 did (`v1_offshelf_v1settings`, conf 0.25, max_det 300), and
