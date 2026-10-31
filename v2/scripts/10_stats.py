@@ -16,6 +16,13 @@ seed, so the interval carries tile variability and the mean carries seed variabi
 Primary endpoints (fixed in PLAN.md before any v2 result): Set B invention at conf 0.25, all tiles,
 both bands; Set A recall at conf 0.25. Everything else is secondary.
 
+Added after first results (stats.json "added_after_first_results"; none of it is a pre-registered
+endpoint, and the blocks above are computed exactly as before):
+  - excess over own originals: invention of M_SR on SR and M_BIC on bicubic minus the same detector
+    on the original tiles, per seed, and the difference of the two excesses (v1 rows for reference);
+  - seed-pairing-free checks for C1 and C2: all 9 (A seed, B seed) pairings, and a majority vote
+    (a tile counts as invented when at least 2 of the 3 seeds invent on it).
+
 Reads v2/results/{setA_per_tile.csv, setA_metrics.json, setB_per_tile_counts.csv,
 setB_invention_per_tile.csv}; writes v2/results/stats.json.
 """
@@ -37,6 +44,13 @@ COMPARISONS = {
 }
 REFERENCES = [("M_HR", "hr"), ("M_SR", "hr"), ("M_BIC", "hr"), ("M_HR", "bicubic"), ("M_BIC", "sr")]
 PRIMARY = ["setB_invention_lower_conf0.25_all", "setB_invention_upper_conf0.25_all", "setA_recall_conf0.25"]
+EXCESS = {  # added after first results: restored-image invention minus the same detector on the originals
+    "M_SR_on_sr_over_own_originals": (("M_SR", "sr"), ("M_SR", "hr")),
+    "M_BIC_on_bicubic_over_own_originals": (("M_BIC", "bicubic"), ("M_BIC", "hr")),
+    "M_HR_on_sr_over_own_originals": (("M_HR", "sr"), ("M_HR", "hr")),
+    "v1_on_sr_over_own_originals": (("v1", "sr"), ("v1", "hr")),
+    "v1_on_bicubic_over_own_originals": (("v1", "bicubic"), ("v1", "hr")),
+}
 
 
 def boot_idx(n):
@@ -108,15 +122,18 @@ def summarise(per_seed, pairs, idx, stat_fn):
             "same_sign_all_seeds": bool((d > 0).all() or (d < 0).all())}
 
 
+def setA_rows(tbl, cell, s, c):
+    """-> per-tile (tp, fp, n_gt) of one (condition, version) cell, seed and threshold, tile order."""
+    x = tbl[(tbl["condition"] == cell[0]) & (tbl["seed"] == s) & (tbl["version"] == cell[1]) & np.isclose(tbl["conf"], c)]
+    return x.sort_values("tile")[["tp", "fp", "n_gt"]].to_numpy(float)
+
+
 def setA_comparison(tbl, ap, a, b, seeds, c, metric):
     per_seed, pairs, idx = {}, [], None
     for s in seeds:
-        x = tbl[(tbl["condition"] == a[0]) & (tbl["seed"] == s) & (tbl["version"] == a[1]) & np.isclose(tbl["conf"], c)]
-        y = tbl[(tbl["condition"] == b[0]) & (tbl["seed"] == s) & (tbl["version"] == b[1]) & np.isclose(tbl["conf"], c)]
-        if x.empty or y.empty:
+        X, Y = setA_rows(tbl, a, s, c), setA_rows(tbl, b, s, c)
+        if not len(X) or not len(Y):
             continue
-        x, y = x.sort_values("tile"), y.sort_values("tile")
-        X, Y = x[["tp", "fp", "n_gt"]].to_numpy(float), y[["tp", "fp", "n_gt"]].to_numpy(float)
         idx = boot_idx(len(X)) if idx is None else idx
         f = METRIC[metric]
         per_seed[s] = {"a": f(X.sum(0)), "b": f(Y.sum(0)), "diff": f(X.sum(0)) - f(Y.sum(0)),
@@ -144,6 +161,98 @@ def _f1(s):
 
 
 METRIC = {"precision": _p, "recall": _r, "f1": _f1}
+
+
+# ------------------------------------------------- added after first results (not pre-registered)
+
+def excess_difference(arrs, a, a0, b, b0, seeds):
+    """(a - a0) - (b - b0) in points of tiles, paired by seed and tile: does one pipeline add more
+    invention over its own detector's originals than the other? Same tile bootstrap as summarise."""
+    per_seed, boots, idx = {}, [], None
+    for s in seeds:
+        xs = [arrs.get((c[0], c[1], s)) for c in (a, a0, b, b0)]
+        if any(x is None for x in xs):
+            continue
+        idx = boot_idx(len(xs[0])) if idx is None else idx
+        boot = 100 * ((xs[0][idx].mean(1) - xs[1][idx].mean(1)) - (xs[2][idx].mean(1) - xs[3][idx].mean(1)))
+        point = 100 * ((xs[0].mean() - xs[1].mean()) - (xs[2].mean() - xs[3].mean()))
+        per_seed[s] = {"diff_pp": float(point), "diff_ci95": ci(boot)}
+        boots.append(boot)
+    if not per_seed:
+        return None
+    d = np.array([e["diff_pp"] for e in per_seed.values()])
+    return {"per_seed": per_seed, "n_seeds": len(d), "diff_mean": float(d.mean()),
+            "diff_sd": float(d.std(ddof=1)) if len(d) > 1 else None, "seed_avg_diff_ci95": ci(np.mean(boots, axis=0)),
+            "same_sign_all_seeds": bool((d > 0).all() or (d < 0).all())}
+
+
+def pair_summary(pairs, value):
+    if not pairs:
+        return None
+    d = np.array([e[value] for e in pairs.values()])
+    excl = sum(1 for e in pairs.values() if e["diff_ci95"][0] > 0 or e["diff_ci95"][1] < 0)
+    return {"pairs": pairs, "n_pairs": len(d), "n_positive": int((d > 0).sum()), "n_negative": int((d < 0).sum()),
+            "min": float(d.min()), "max": float(d.max()), "n_ci_excluding_zero": excl}
+
+
+def cross_seed_pairs(arrs, a, b, seeds):
+    """Every (A seed, B seed) pairing, not only equal seeds, so the pairing cannot drive the result."""
+    pairs, idx = {}, None
+    for sa in seeds:
+        for sb in seeds:
+            x, y = arrs.get((a[0], a[1], sa)), arrs.get((b[0], b[1], sb))
+            if x is None or y is None:
+                continue
+            idx = boot_idx(len(x)) if idx is None else idx
+            _, _, p = v1.mcnemar_exact(x, y)
+            pairs[f"{sa}v{sb}"] = {"diff_pp": 100 * (x.mean() - y.mean()),
+                                   "diff_ci95": ci((x[idx].mean(1) - y[idx].mean(1)) * 100), "mcnemar_exact_p": p}
+    return pair_summary(pairs, "diff_pp")
+
+
+def cross_seed_recall(tbl, a, b, seeds, c):
+    pairs, idx, f = {}, None, METRIC["recall"]
+    for sa in seeds:
+        for sb in seeds:
+            X, Y = setA_rows(tbl, a, sa, c), setA_rows(tbl, b, sb, c)
+            if not len(X) or not len(Y):
+                continue
+            idx = boot_idx(len(X)) if idx is None else idx
+            pairs[f"{sa}v{sb}"] = {"diff": float(f(X.sum(0)) - f(Y.sum(0))),
+                                   "diff_ci95": ci(f(X[idx].sum(1).T) - f(Y[idx].sum(1).T))}
+    return pair_summary(pairs, "diff")
+
+
+def majority_comparison(arrs, a, b, seeds):
+    """A tile counts as invented when a strict majority of seeds (2 of 3) invent on it."""
+    def vote(cell):
+        xs = [arrs.get((cell[0], cell[1], s)) for s in seeds]
+        return None if any(x is None for x in xs) else (2 * np.sum(xs, axis=0) > len(xs)).astype(int)
+    x, y = vote(a), vote(b)
+    if x is None or y is None:
+        return None
+    return binary_comparison({(*a, "majority"): x, (*b, "majority"): y}, a, b, ["majority"])
+
+
+def added_after_first_results(bset, tbl, seeds):
+    out = {"note": "added after first results; not pre-registered", "excess_over_own_originals": {},
+           "excess_difference_MSR_minus_MBIC": {}, "cross_seed_pairs": {}, "majority_vote": {}}
+    for key in PRIMARY[:2]:
+        arrs = bset.get(key, {})
+        for name, (a, b) in EXCESS.items():
+            r = binary_comparison(arrs, a, b, [""] if a[0] == "v1" else seeds)
+            if r:
+                out["excess_over_own_originals"].setdefault(name, {})[key] = r
+        r = excess_difference(arrs, *EXCESS["M_SR_on_sr_over_own_originals"],
+                              *EXCESS["M_BIC_on_bicubic_over_own_originals"], seeds)
+        if r:
+            out["excess_difference_MSR_minus_MBIC"][key] = r
+        for name, (a, b) in COMPARISONS.items():
+            out["cross_seed_pairs"].setdefault(name, {})[key] = cross_seed_pairs(arrs, a, b, seeds)
+            out["majority_vote"].setdefault(name, {})[key] = majority_comparison(arrs, a, b, seeds)
+    for name, (a, b) in COMPARISONS.items():
+        out["cross_seed_pairs"][name][PRIMARY[2]] = cross_seed_recall(tbl, a, b, seeds, 0.25)
+    return out
 
 
 def main():
@@ -174,6 +283,7 @@ def main():
                 ref[key] = {"mean": float(np.mean(vals)), "sd": float(np.std(vals, ddof=1)) if len(vals) > 1 else None,
                             "per_seed": vals}
         out["references"][f"{cond}_on_{ver}"] = ref
+    out["added_after_first_results"] = added_after_first_results(bset, tbl, seeds)
     (V2_RESULTS / "stats.json").write_text(json.dumps(out, indent=2, default=float))
     for name, res in out["comparisons"].items():
         print(f"\n{name}")
@@ -183,6 +293,17 @@ def main():
                 print(f"  {key:40s} A {e['a_mean']:7.3f}  B {e['b_mean']:7.3f}  diff {e['diff_mean']:+7.3f} "
                       f"(seed-avg CI {e['seed_avg_diff_ci95'][0]:+.3f}, {e['seed_avg_diff_ci95'][1]:+.3f})  "
                       f"same sign all seeds: {e['same_sign_all_seeds']}")
+    post = out["added_after_first_results"]
+    print("\nadded after first results")
+    for name, res in post["excess_over_own_originals"].items():
+        e = res[PRIMARY[0]]
+        print(f"  excess {name:40s} {e['diff_mean']:+6.1f} pp (CI {e['seed_avg_diff_ci95'][0]:+.1f}, "
+              f"{e['seed_avg_diff_ci95'][1]:+.1f})")
+    for name, res in post["cross_seed_pairs"].items():
+        e = res[PRIMARY[0]]
+        if e:
+            print(f"  {name} 9 pairs, invention: {e['n_negative']} below / {e['n_positive']} above zero, "
+                  f"range {e['min']:+.1f} to {e['max']:+.1f}")
     print(f"\n-> {V2_RESULTS / 'stats.json'}")
 
 

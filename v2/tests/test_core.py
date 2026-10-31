@@ -157,3 +157,39 @@ def test_signed_never_prints_negative_zero():
     m11 = load("scripts/11_summary.py")
     assert m11.signed(-1e-16, "pp") == "+0.0"
     assert m11.signed(-0.25, "rate") == "−0.250" and m11.signed(10.66, "pp") == "+10.7"
+
+
+def test_majority_vote_needs_two_of_three_seeds():
+    m10 = load("scripts/10_stats.py")
+    seeds = ["0", "1", "2"]
+    votes = {s: np.zeros(6, int) for s in seeds}
+    votes["0"][[0, 1]] = 1
+    votes["1"][[0, 2]] = 1
+    votes["2"][[0, 1]] = 1                    # tile 0: 3 votes, tile 1: 2, tile 2: 1
+    arrs = {("M_SR", "sr", s): votes[s] for s in seeds} | {("M_BIC", "bicubic", s): np.zeros(6, int) for s in seeds}
+    r = m10.majority_comparison(arrs, ("M_SR", "sr"), ("M_BIC", "bicubic"), seeds)
+    assert r["a_mean"] == pytest.approx(100 * 2 / 6) and r["b_mean"] == 0
+
+
+def test_cross_seed_pairs_cover_all_nine_pairings():
+    m10 = load("scripts/10_stats.py")
+    seeds = ["0", "1", "2"]
+    arrs = {}
+    for k, s in enumerate(seeds):
+        arrs[("M_SR", "sr", s)] = (np.arange(30) < 5 + k).astype(int)
+        arrs[("M_HR", "sr", s)] = (np.arange(30) < 10).astype(int)
+    r = m10.cross_seed_pairs(arrs, ("M_SR", "sr"), ("M_HR", "sr"), seeds)
+    assert r["n_pairs"] == 9 and r["n_negative"] == 9
+    assert set(r["pairs"]) == {f"{a}v{b}" for a in seeds for b in seeds}
+
+
+def test_excess_difference_is_difference_of_excesses():
+    m10 = load("scripts/10_stats.py")
+    n, seeds = 20, ["0", "1", "2"]
+    arr = lambda k: (np.arange(n) < k).astype(int)  # noqa: E731
+    arrs = {}
+    for s in seeds:
+        arrs.update({("M_SR", "sr", s): arr(6), ("M_SR", "hr", s): arr(2),
+                     ("M_BIC", "bicubic", s): arr(5), ("M_BIC", "hr", s): arr(4)})
+    r = m10.excess_difference(arrs, ("M_SR", "sr"), ("M_SR", "hr"), ("M_BIC", "bicubic"), ("M_BIC", "hr"), seeds)
+    assert r["diff_mean"] == pytest.approx(100 * ((6 - 2) - (5 - 4)) / n) and r["same_sign_all_seeds"]
