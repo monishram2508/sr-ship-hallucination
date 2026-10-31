@@ -90,8 +90,10 @@ On Colab, copy `v2/kaggle_upload/` to Drive as `MyDrive/sr-ship-v2-trainset` and
 .venv/bin/python v2/scripts/06_eval_setB_firing.py    # same gate for Set B
 .venv/bin/python v2/scripts/07_build_audit_crops.py   # prints how many crops need a human verdict
 .venv/bin/python v2/scripts/08_label.py               # blind labelling (s / n / u)
+.venv/bin/python v2/scripts/08_label.py --queue hr_floor   # added after first results: M_SR/M_BIC on originals
 .venv/bin/python v2/scripts/09_recount_invention.py  # refuses while a compared cell is unlabelled
 .venv/bin/python v2/scripts/10_stats.py
+.venv/bin/python v2/scripts/12_false_ship_gallery.py  # added after first results: needs the local test images
 .venv/bin/python v2/scripts/11_summary.py             # results/summary.md + figures
 ```
 
@@ -107,7 +109,7 @@ v2/
   PLAN.md  README.md  config.yaml  requirements.txt
   common_v2.py        config, read-only imports of v1 code, rotated-box matching, AP
   kaggle_train.py     builds the three training sets on the GPU and trains one condition x seed
-  scripts/            00-11, one per phase
+  scripts/            00-12, one per phase (12 and the --queue labeller were added after first results)
   notebooks/          make_notebook.py -> train.ipynb
   tests/              unit tests
   results/            everything the write-up quotes

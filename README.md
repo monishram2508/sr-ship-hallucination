@@ -1,11 +1,23 @@
 # Does GAN super-resolution make a detector see ships that aren't there?
 
+## Update (v2): what changes when the detector is retrained
+
+- **What changed:** a reviewer pointed out that v1's detector had never seen a super-resolved image. v2 trains small ship-only detectors three ways (originals only, plus Real-ESRGAN versions, plus bicubic versions), three seeds each, with equal training steps, and reruns both test sets with a new blind audit.
+- **Verdict:** Q1, yes: on SR images, the detector trained with SR invents ships on 20.2% of verified-empty tiles against 30.9% for one that never saw SR, and its recall rises from 0.864 to 0.937. Q2, no gap under matched training: with each detector trained on its own kind of image, the SR and bicubic pipelines invent equally often (20.2% vs 20.4%, 95% CI −5.8 to +5.6 points).
+- **Full write-up:** [`v2/results/summary.md`](v2/results/summary.md), with every number per seed and the limitations.
+- **Correction:** v1 scored Set A with ultralytics' default `max_det=300`, which dropped boxes on two dense tiles; every v1 Set A recall below is 2.4–2.7 points too low (at conf 0.25: SR 0.881 → 0.907, bicubic 0.901 → 0.928), and the SR-vs-bicubic gap barely moves.
+
+## Original study (v1)
+
+The text below is the original study, unchanged except for one sentence about deployment.
+
 The one-liner: the GAN made the detector see ships that were never there about 10x more often than a plain upscale did. It found no extra real ships in return. And the standard image quality score, PSNR, didn't notice either of the issues.
 
 I took labelled overhead imagery, degraded it 4x with a sensor model, restored it two ways — a plain
 bicubic upscale and a GAN super-resolver — and ran the same pretrained ship detector on all three
-versions. The detector was never retrained on super-resolved output, because that is how
-super-resolution actually gets deployed on systems.
+versions. The detector was never retrained on super-resolved output: this models super-resolution
+bolted in front of an existing detector, which is one way it can be deployed, not the only one. The
+v2 update above tests the retrained case.
 
 I've counted two things separately, which most super-resolution papers don't:
 
