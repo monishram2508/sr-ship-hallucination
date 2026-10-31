@@ -1,0 +1,15 @@
+# Pinned to the environment v1 ran in (Python 3.11). On Kaggle/Colab, torch and torchvision come
+# from the image's CUDA build; the notebook installs everything below except those two.
+ultralytics==8.4.171
+torch==2.14.1
+torchvision==0.29.1
+spandrel==0.4.2
+opencv-python==5.0.0.93
+numpy==2.4.6
+scipy==1.17.1
+scikit-image==0.26.0
+pandas==3.0.6
+matplotlib==3.11.2
+pillow==12.3.0
+PyYAML==6.0.3
+tqdm==4.70.1

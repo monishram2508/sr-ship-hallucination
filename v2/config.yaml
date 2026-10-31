@@ -1,0 +1,69 @@
+# v2 configuration: every path, seed, size and threshold in one place.
+# Paths are relative to the repository root.
+
+seed: 0
+
+v1:
+  sets: data/sets                       # setA.txt, setB.txt
+  versions: data/versions               # {hr,lr,bicubic,sr}/{setA,setB}/{images,labels}
+  results: results
+  detector: yolov8s-obb.pt              # off-the-shelf 15-class DOTA detector (reference row)
+  ship_cls: 1                           # ship id in the 15-class DOTA scheme
+  sr_weights: weights/RealESRGAN_x4plus.pth
+
+dota_root: data/DOTAv1                  # ultralytics DOTAv1 layout, images/{train,val}, labels/{train,val}
+v2_data: v2/data
+v2_results: v2/results
+
+tile: 1024
+gap: 200
+scale: 4
+blur_sigma: 2.0
+dominant_tile: P1751__1024__0___2976
+
+trainset:
+  n_pos: 600
+  n_neg: 300
+  hard_neg_classes: [7, 9, 10]          # harbor, large-vehicle, small-vehicle (DOTAv1 ids)
+  ship_cls_dota: 1
+  val_frac: 0.10                        # by source image, so overlapping tiles never straddle the split
+
+train:
+  model_cfg: yolov8n-obb.yaml
+  init_weights: yolov8n.pt              # COCO-pretrained; NOT the DOTA OBB weights
+  imgsz: 1024
+  batch: 8
+  flipud: 0.5
+  deterministic: true
+  patience: 0                           # 0 disables early stopping in ultralytics
+  cache: disk                           # 'ram' is flagged non-deterministic by ultralytics
+  seeds: [0, 1, 2]
+  # equal gradient steps: M_SR and M_BIC have twice the images, so half the epochs. warmup and
+  # close_mosaic are counted in epochs by ultralytics, so they are halved too, otherwise the
+  # 2x-data runs would warm up for twice as many steps and train without mosaic twice as long.
+  conditions:
+    M_HR:  {sources: [hr],          epochs: 100, warmup_epochs: 3.0, close_mosaic: 10}
+    M_SR:  {sources: [hr, sr],      epochs: 50,  warmup_epochs: 1.5, close_mosaic: 5}
+    M_BIC: {sources: [hr, bicubic], epochs: 50,  warmup_epochs: 1.5, close_mosaic: 5}
+
+predict:
+  conf: 0.01
+  max_det: 1000                         # default 300 could truncate dense tiles at conf 0.01
+  imgsz: 1024
+
+eval:
+  confs: [0.25, 0.5]
+  iou: 0.5
+  n_boot: 10000
+  boot_seed: 0
+
+audit:
+  conf: 0.25
+  cluster_iou: 0.5
+  inherit_iou: 0.5
+  n_repeats: 25
+  pad: 48
+  # the (condition, version) cells the pre-registered comparisons read: C1, C2 (10_stats.COMPARISONS)
+  # and C3's M_HR-on-original ceiling. Their crops (plus the hidden repeats) are labelled first;
+  # 09 refuses to run while any of them is unlabelled, and reports other cells only when complete.
+  priority_cells: [[M_SR, sr], [M_HR, sr], [M_BIC, bicubic], [M_HR, hr]]

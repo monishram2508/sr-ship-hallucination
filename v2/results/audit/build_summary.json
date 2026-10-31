@@ -1,0 +1,53 @@
+{
+  "n_detections_pooled": 6177,
+  "n_clusters": 1332,
+  "clusters_by_source": {
+    "new": 1193,
+    "v1_match": 139
+  },
+  "n_new_crops": 1193,
+  "n_repeat_crops": 25,
+  "repeat_allocation_by_pass1": {
+    "ship": 9,
+    "unsure": 6,
+    "not_ship": 10
+  },
+  "n_crops_to_label": 1218,
+  "n_priority_crops": 767,
+  "priority_cells": [
+    [
+      "M_SR",
+      "sr"
+    ],
+    [
+      "M_HR",
+      "sr"
+    ],
+    [
+      "M_BIC",
+      "bicubic"
+    ],
+    [
+      "M_HR",
+      "hr"
+    ]
+  ],
+  "models": [
+    "v1_offshelf",
+    "M_BIC_s0",
+    "M_BIC_s1",
+    "M_BIC_s2",
+    "M_HR_s0",
+    "M_HR_s1",
+    "M_HR_s2",
+    "M_SR_s0",
+    "M_SR_s1",
+    "M_SR_s2"
+  ],
+  "versions": [
+    "hr",
+    "bicubic",
+    "sr",
+    "sr_greyfix"
+  ]
+}

@@ -1,0 +1,13 @@
+# DOTA-derived imagery, weights and training runs stay local (DOTA is academic-use only)
+data/
+weights/
+runs/
+kaggle_upload/
+*.pt
+*.zip
+
+# DOTA-derived diagnostic images
+results/sanity_grid.png
+results/phase0/
+results/audit/crops/
+results/audit/sheet_*.png

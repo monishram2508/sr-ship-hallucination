@@ -1,0 +1,11 @@
+{
+  "total_bytes": 330474968,
+  "total_mb": 315.2,
+  "parts_mb": {
+    "code": 64.0,
+    "data": 251.2,
+    "data/images": 243.1
+  },
+  "n_tiles": 900,
+  "slug": "sr-ship-v2-trainset"
+}

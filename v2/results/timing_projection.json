@@ -1,0 +1,11 @@
+{
+  "measured_condition": "M_SR",
+  "seconds_per_epoch": 40.9847,
+  "projected_minutes_per_run": {
+    "M_HR": 34.2,
+    "M_SR": 34.2,
+    "M_BIC": 34.2
+  },
+  "projected_gpu_hours_all_seeds": 5.12,
+  "note": "epoch time (training + per-epoch validation) scaled by each condition's image count; excludes prepare(), which runs once per session"
+}

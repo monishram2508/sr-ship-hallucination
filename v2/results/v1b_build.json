@@ -1,0 +1,10 @@
+{
+  "setA": {
+    "n_tiles": 100,
+    "n_grey_converted": 25
+  },
+  "setB": {
+    "n_tiles": 150,
+    "n_grey_converted": 67
+  }
+}
