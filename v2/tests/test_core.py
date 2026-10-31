@@ -139,3 +139,21 @@ def test_priority_cells_cover_every_comparison():
     cells = {tuple(p) for p in c2.CFG["audit"]["priority_cells"]}
     needed = {cell for pair in m10.COMPARISONS.values() for cell in pair} | {("M_HR", "hr")}   # + C3 ceiling
     assert needed <= cells
+
+
+def test_check_claims_flags_a_verdict_the_numbers_no_longer_support():
+    m11 = load("scripts/11_summary.py")
+    ci = {"below": [-2.0, -1.0], "above": [1.0, 2.0], "across": [-1.0, 1.0]}
+    stats = {"comparisons": {}}
+    for name, key, want in m11.CLAIMS:
+        stats["comparisons"].setdefault(name, {})[key] = {"seed_avg_diff_ci95": ci[want]}
+    assert m11.check_claims(stats) == []
+    stats["comparisons"][m11.C2][m11.INV_LO]["seed_avg_diff_ci95"] = [0.5, 9.0]     # SR now invents more
+    bad = m11.check_claims(stats)
+    assert len(bad) == 1 and "above zero" in bad[0]
+
+
+def test_signed_never_prints_negative_zero():
+    m11 = load("scripts/11_summary.py")
+    assert m11.signed(-1e-16, "pp") == "+0.0"
+    assert m11.signed(-0.25, "rate") == "−0.250" and m11.signed(10.66, "pp") == "+10.7"
