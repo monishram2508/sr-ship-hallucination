@@ -67,3 +67,7 @@ audit:
   # and C3's M_HR-on-original ceiling. Their crops (plus the hidden repeats) are labelled first;
   # 09 refuses to run while any of them is unlabelled, and reports other cells only when complete.
   priority_cells: [[M_SR, sr], [M_HR, sr], [M_BIC, bicubic], [M_HR, hr]]
+  # added after first results: each pipeline's own detector on the originals, so C2 can also report
+  # invention in excess of that floor. `08_label.py --queue hr_floor` labels only these crops.
+  queues:
+    hr_floor: [[M_SR, hr], [M_BIC, hr]]
