@@ -15,8 +15,9 @@ detectors three ways and testing each on the same tiles as v1.
 - **Q2:** with each detector trained on what it is tested on, does the SR pipeline still invent more
   vessels than the bicubic one? (`M_SR` on SR vs `M_BIC` on bicubic)
 
-The plan, including every pre-registered comparison, is in [`PLAN.md`](PLAN.md). Results go in
-`results/summary.md` once the runs exist.
+The plan, including every pre-registered comparison, is in [`PLAN.md`](PLAN.md). The results, the
+verdict on both questions and the limitations are in [`results/summary.md`](results/summary.md),
+which `scripts/11_summary.py` generates from the results files.
 
 ## Phase 0 findings (already done)
 
@@ -89,9 +90,13 @@ On Colab, copy `v2/kaggle_upload/` to Drive as `MyDrive/sr-ship-v2-trainset` and
 .venv/bin/python v2/scripts/06_eval_setB_firing.py    # same gate for Set B
 .venv/bin/python v2/scripts/07_build_audit_crops.py   # prints how many crops need a human verdict
 .venv/bin/python v2/scripts/08_label.py               # blind labelling (s / n / u)
-.venv/bin/python v2/scripts/09_recount_invention.py
+.venv/bin/python v2/scripts/09_recount_invention.py  # refuses while a compared cell is unlabelled
 .venv/bin/python v2/scripts/10_stats.py
+.venv/bin/python v2/scripts/11_summary.py             # results/summary.md + figures
 ```
+
+`08_label.py` lists the crops the comparisons need first (1–767 of 1,218); the rest are optional,
+and any cell with an unlabelled crop is reported as not audited rather than counted partially.
 
 Unit tests: `python -m pytest v2/tests -q` (needs pytest; any environment with v1's packages).
 
@@ -102,7 +107,7 @@ v2/
   PLAN.md  README.md  config.yaml  requirements.txt
   common_v2.py        config, read-only imports of v1 code, rotated-box matching, AP
   kaggle_train.py     builds the three training sets on the GPU and trains one condition x seed
-  scripts/            00-10, one per phase
+  scripts/            00-11, one per phase
   notebooks/          make_notebook.py -> train.ipynb
   tests/              unit tests
   results/            everything the write-up quotes
