@@ -193,3 +193,18 @@ def test_excess_difference_is_difference_of_excesses():
                      ("M_BIC", "bicubic", s): arr(5), ("M_BIC", "hr", s): arr(4)})
     r = m10.excess_difference(arrs, ("M_SR", "sr"), ("M_SR", "hr"), ("M_BIC", "bicubic"), ("M_BIC", "hr"), seeds)
     assert r["diff_mean"] == pytest.approx(100 * ((6 - 2) - (5 - 4)) / n) and r["same_sign_all_seeds"]
+
+
+def test_recheck_allocation_is_equal_and_capped():
+    m08 = load("scripts/08_label.py")
+    take = m08.allocate(150, {"ship": 53, "unsure": 14, "not_ship": 675})
+    assert take == {"ship": 53, "unsure": 14, "not_ship": 83}
+    assert m08.allocate(9, {"a": 10, "b": 10, "c": 10}) == {"a": 3, "b": 3, "c": 3}
+
+
+def test_recheck_agreement_counts_the_confusion_matrix():
+    m13 = load("scripts/13_recheck.py")
+    pairs = [("ship", "ship"), ("not_ship", "ship"), ("not_ship", "not_ship"), ("unsure", "not_ship")]
+    a = m13.agreement([{"old_verdict": o, "new_verdict": n} for o, n in pairs], lambda old, new: None)
+    assert a["n"] == 4 and a["raw_agreement"] == 0.5
+    assert a["confusion_old_rows_new_cols"]["not_ship"] == {"ship": 1, "unsure": 0, "not_ship": 1}
