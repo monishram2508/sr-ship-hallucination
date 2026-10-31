@@ -38,6 +38,12 @@ endpoint, C1–C3 are computed exactly as before, and the write-up marks each on
 3. **False-ship gallery** (`scripts/12_false_ship_gallery.py`): the 24 highest-confidence M_HR
    detections on original Set B tiles audited `not_ship`.
 4. **README** of the original study gains an "Update (v2)" section and one rewritten sentence.
+5. **Blind re-check** (`08_label.py --recheck`, `13_recheck.py`, config `audit.recheck`): 150 crops of the
+   priority cells (seed 1, stratified by first-pass verdict, equal allocation capped at stratum size)
+   plus the 56-crop originals queue, relabelled blind under the rule "any visible hull inside the box =
+   ship". Reports κ, raw agreement, the confusion matrix, and how every primary cell and excess row would
+   move if the re-check verdicts replaced the first pass. The first pass stays the main result unless
+   κ < 0.6, in which case the script stops and nothing downstream changes until the re-check is reviewed.
 
 Two changes from the plan below, both forced by what the gates found: the Set A gate checks a
 second v1 row predicted exactly as v1 did (`v1_offshelf_v1settings`, conf 0.25, max_det 300), and

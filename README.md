@@ -4,6 +4,7 @@
 
 - **What changed:** a reviewer pointed out that v1's detector had never seen a super-resolved image. v2 trains small ship-only detectors three ways (originals only, plus Real-ESRGAN versions, plus bicubic versions), three seeds each, with equal training steps, and reruns both test sets with a new blind audit.
 - **Verdict:** Q1, yes: on SR images, the detector trained with SR invents ships on 20.2% of verified-empty tiles against 30.9% for one that never saw SR, and its recall rises from 0.864 to 0.937. Q2, no gap under matched training: with each detector trained on its own kind of image, the SR and bicubic pipelines invent equally often (20.2% vs 20.4%, 95% CI −5.8 to +5.6 points).
+- **Over each detector's own originals (added after first results):** SR still adds +5.8 points of tiles with an invented ship (95% CI +1.1 to +10.4) and bicubic +3.3 (−1.1 to +7.8); the difference, +2.4 points (−3.6 to +8.7), is not distinguishable from zero.
 - **Full write-up:** [`v2/results/summary.md`](v2/results/summary.md), with every number per seed and the limitations.
 - **Correction:** v1 scored Set A with ultralytics' default `max_det=300`, which dropped boxes on two dense tiles; every v1 Set A recall below is 2.4–2.7 points too low (at conf 0.25: SR 0.881 → 0.907, bicubic 0.901 → 0.928), and the SR-vs-bicubic gap barely moves.
 
