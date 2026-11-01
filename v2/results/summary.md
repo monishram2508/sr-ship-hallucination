@@ -66,8 +66,8 @@ v2 responds point by point:
 - **A real v1 bug, in the evaluation.** v1 called the detector with ultralytics' default `max_det=300`,
   and two dense harbour tiles hit that cap. That understated v1's Set A recall by 2.4–2.7
   points for every version at both thresholds; at conf 0.25 the SR-minus-bicubic recall gap moves from
-  −0.020 to −0.022. v1's public README still shows the capped numbers; the corrected ones are
-  here. v2 predicts with `max_det=1000`, and every image that reached it kept boxes down to conf
+  −0.020 to −0.022. v2 predicts with `max_det=1000`, and every
+  image that reached it kept boxes down to conf
   0.042 or lower, so no count above 0.25 is affected.
 
 | v1 detector, conf 0.25 | recall as v1 ran it (max_det 300) | recall, uncapped | change |
@@ -225,7 +225,7 @@ unsure counted as real it is not consistent across seeds (per seed +0.7, −17.3
 0.864 to 0.937 (+0.033 to +0.119), consistent across all three seeds.
 
 **Q2. With each detector trained on its own kind of image, does the SR pipeline still invent more
-than the bicubic one? No.** M_SR on SR invented on 20.2% of tiles and M_BIC on bicubic on
+than the bicubic one? No detectable gap.** M_SR on SR invented on 20.2% of tiles and M_BIC on bicubic on
 20.4% (unsure = real), 20.7% and 20.7% (unsure = invented): differences
 of −0.2 and +0.0 points, 95% CIs −5.8 to +5.6 and
 −5.6 to +5.8; per seed the differences are +6.7, +0.0, −7.3 and
@@ -273,6 +273,7 @@ not survive matched training.
    condition. The 56 crops behind the excess analysis were labelled after the first results, from a
    queue holding only regions that M_SR or M_BIC drew on the original tiles (5 ship,
    2 unsure, 49 not_ship), so that batch was not blind to the cell it came from.
+   A blind re-check of 206 crops under a looser rule (section 6, added after first results) gives κ 0.78 against the first pass.
 2. **One verdict per region.** A region's verdict is judged on its seed box and applies to every
    detection within probIoU 0.5 of it, so a member box can sit slightly differently from the box that was
    judged (the second panel of the gallery in section 3 is an example).
@@ -291,7 +292,63 @@ not survive matched training.
 8. **Three seeds**, and GPU training is not bit-exact (mixed precision, cuDNN); seed spread is shown
    everywhere rather than assumed away.
 
-## 6. Summary for the reviewer (158 words)
+## 6. Blind re-check of the labels, added after first results
+
+206 crops were labelled a second time, shuffled and blind to the first verdict:
+53 of 53 `ship`, 14 of 14 `unsure` and 83 of 675 `not_ship`
+crops from the primary cells (stratified by first-pass verdict, equal allocation capped at each
+stratum's size, seed 1), plus all 56 crops of the originals queue. The re-check showed the rule
+"any visible hull inside the box = ship" on screen, looser than the first pass, which asked whether about half
+the box or more covered a vessel; disagreement below mixes that rule change with rater noise.
+
+| re-checked crops | n | Cohen's κ | raw agreement |
+|---|---|---|---|
+| all | 206 | 0.78 | 89% |
+| originals queue | 56 | 0.62 | 89% |
+| primary | 150 | 0.80 | 89% |
+
+| first pass (rows) / re-check (columns) | ship | unsure | not_ship |
+|---|---|---|---|
+| ship | 55 | 1 | 2 |
+| unsure | 7 | 2 | 7 |
+| not_ship | 4 | 1 | 127 |
+
+**Decision.** κ over all re-checked crops (0.78) is at least the pre-set 0.6, so the
+first pass stays the main result and the tables below are a sensitivity check: what would change if
+the re-check verdicts replaced the first-pass ones (only re-checked crops change).
+
+| cell | unsure counted as | first pass (% tiles) | with re-check verdicts | change |
+|---|---|---|---|---|
+| M_SR on Real-ESRGAN | real | 20.2 | 20.2 | +0.0 |
+| M_SR on Real-ESRGAN | invented | 20.7 | 20.4 | −0.2 |
+| M_HR on Real-ESRGAN | real | 30.9 | 31.1 | +0.2 |
+| M_HR on Real-ESRGAN | invented | 32.7 | 32.0 | −0.7 |
+| M_BIC on bicubic | real | 20.4 | 20.7 | +0.2 |
+| M_BIC on bicubic | invented | 20.7 | 20.7 | +0.0 |
+| M_HR on original | real | 18.9 | 18.9 | +0.0 |
+| M_HR on original | invented | 21.3 | 20.7 | −0.7 |
+
+| excess over own originals | unsure counted as | first pass (95% CI) | with re-check verdicts (95% CI) |
+|---|---|---|---|
+| M_SR, Real-ESRGAN minus originals | real | +5.8 (+1.1 to +10.4) | +6.7 (+2.2 to +11.3) |
+| M_SR, Real-ESRGAN minus originals | invented | +4.4 (−0.4 to +9.3) | +5.1 (+0.7 to +9.8) |
+| M_BIC, bicubic minus originals | real | +3.3 (−1.1 to +7.8) | +4.0 (−0.7 to +8.7) |
+| M_BIC, bicubic minus originals | invented | +2.0 (−2.4 to +6.4) | +2.7 (−2.0 to +7.1) |
+| M_HR, Real-ESRGAN minus originals | real | +12.0 (+6.2 to +18.0) | +12.2 (+6.4 to +18.2) |
+| M_HR, Real-ESRGAN minus originals | invented | +11.3 (+5.1 to +17.8) | +11.3 (+5.1 to +17.6) |
+| v1 detector, Real-ESRGAN minus originals | real | +14.0 (+8.7 to +20.0) | +14.0 (+8.7 to +20.0) |
+| v1 detector, Real-ESRGAN minus originals | invented | +16.0 (+10.0 to +22.0) | +16.0 (+10.0 to +22.0) |
+| v1 detector, bicubic minus originals | real | +1.3 (+0.0 to +3.3) | +1.3 (+0.0 to +3.3) |
+| v1 detector, bicubic minus originals | invented | +2.0 (+0.0 to +4.7) | +2.0 (+0.0 to +4.7) |
+| M_SR excess minus M_BIC excess | real | +2.4 (−3.6 to +8.7) | +2.7 (−3.6 to +9.1) |
+| M_SR excess minus M_BIC excess | invented | +2.4 (−3.6 to +8.9) | +2.4 (−3.6 to +8.7) |
+
+The re-check covers every first-pass `ship` and `unsure` crop of the primary cells but only
+83 of 675 `not_ship` crops. In that sample 1 of 83 `not_ship` crops became
+`ship` or `unsure`; the same rate in the other 592 would move invention further than these
+tables show.
+
+## 7. Summary for the reviewer (158 words)
 
 I retrained, as you suggested. A small ship-only detector (YOLOv8n-OBB, 900 DOTA tiles) was trained three ways, on originals only, plus Real-ESRGAN versions, or plus bicubic versions, three seeds each, then tested on v1's tiles with a new blind audit.
 
