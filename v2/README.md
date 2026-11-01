@@ -94,6 +94,8 @@ On Colab, copy `v2/kaggle_upload/` to Drive as `MyDrive/sr-ship-v2-trainset` and
 .venv/bin/python v2/scripts/09_recount_invention.py  # refuses while a compared cell is unlabelled
 .venv/bin/python v2/scripts/10_stats.py
 .venv/bin/python v2/scripts/12_false_ship_gallery.py  # added after first results: needs the local test images
+.venv/bin/python v2/scripts/08_label.py --recheck     # added after first results: blind re-check of 206 crops
+.venv/bin/python v2/scripts/13_recheck.py             # test-retest agreement; exits 2 if kappa < 0.6
 .venv/bin/python v2/scripts/11_summary.py             # results/summary.md + figures
 ```
 
@@ -109,7 +111,8 @@ v2/
   PLAN.md  README.md  config.yaml  requirements.txt
   common_v2.py        config, read-only imports of v1 code, rotated-box matching, AP
   kaggle_train.py     builds the three training sets on the GPU and trains one condition x seed
-  scripts/            00-12, one per phase (12 and the --queue labeller were added after first results)
+  scripts/            00-13, one per phase (12, 13 and the --queue / --recheck labeller modes were
+                      added after first results)
   notebooks/          make_notebook.py -> train.ipynb
   tests/              unit tests
   results/            everything the write-up quotes

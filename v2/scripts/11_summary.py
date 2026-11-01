@@ -439,8 +439,8 @@ def section_phase0(d):
 - **A real v1 bug, in the evaluation.** v1 called the detector with ultralytics' default `max_det=300`,
   and two dense harbour tiles hit that cap. That understated v1's Set A recall by {lo:.1f}–{hi:.1f}
   points for every version at both thresholds; at conf 0.25 the SR-minus-bicubic recall gap moves from
-  {signed(gap['v1_offshelf_v1settings'], 'rate')} to {signed(gap['v1_offshelf'], 'rate')}. v1's public README still shows the capped numbers; the corrected ones are
-  here. v2 predicts with `max_det=1000`, and every image that reached it kept boxes down to conf
+  {signed(gap['v1_offshelf_v1settings'], 'rate')} to {signed(gap['v1_offshelf'], 'rate')}. v2 predicts with `max_det=1000`, and every
+  image that reached it kept boxes down to conf
   {lowest:.3f} or lower, so no count above 0.25 is affected.
 
 {truncation_table(sa)}
@@ -540,7 +540,7 @@ unsure counted as real it is {direction(c1[INV_LO], 'pp')}. Recall on SR images 
 {c1[RECALL]['b_mean']:.3f} to {c1[RECALL]['a_mean']:.3f} ({ci_text(c1[RECALL], 'rate')}), {direction(c1[RECALL], 'rate')}.
 
 **Q2. With each detector trained on its own kind of image, does the SR pipeline still invent more
-than the bicubic one? No.** M_SR on SR invented on {c2[INV_LO]['a_mean']:.1f}% of tiles and M_BIC on bicubic on
+than the bicubic one? No detectable gap.** M_SR on SR invented on {c2[INV_LO]['a_mean']:.1f}% of tiles and M_BIC on bicubic on
 {c2[INV_LO]['b_mean']:.1f}% (unsure = real), {c2[INV_HI]['a_mean']:.1f}% and {c2[INV_HI]['b_mean']:.1f}% (unsure = invented): differences
 of {signed(c2[INV_LO]['diff_mean'], 'pp')} and {signed(c2[INV_HI]['diff_mean'], 'pp')} points, 95% CIs {ci_text(c2[INV_LO], 'pp')} and
 {ci_text(c2[INV_HI], 'pp')}; per seed the differences are {per_seed(c2[INV_LO], 'pp')} and
@@ -579,6 +579,60 @@ not survive matched training.
   {per_seed(c2[BEYOND], 'pp')}), yet audited invention is the same for both pipelines (Q2)."""
 
 
+def section_recheck(r):
+    """Added after first results: the blind test-retest re-check (13_recheck.py)."""
+    order, a, s = ("ship", "unsure", "not_ship"), r["agreement"], r["sample"]
+    agree = "\n".join(f"| {name.replace('_', ' ')} | {e['n']} | {e['kappa']:.2f} | {100 * e['raw_agreement']:.0f}% |"
+                      for name, e in a.items())
+    m = a["all"]["confusion_old_rows_new_cols"]
+    conf = "\n".join(f"| {o} | " + " | ".join(str(m[o][n]) for n in order) + " |" for o in order)
+    cells = []
+    for key, e in r["impact_primary_cells"].items():
+        cond, ver = key.split("_on_")
+        cells += [f"| {cond} on {VERSIONS[ver]} | {band_name} | {e[band]['old_mean']:.1f} | {e[band]['new_mean']:.1f} | "
+                  f"{signed(e[band]['change_mean'], 'pp')} |" for band, band_name in (("lower", "real"), ("upper", "invented"))]
+    names = {**dict(EXCESS_ROWS), "excess_difference_MSR_minus_MBIC": "M_SR excess minus M_BIC excess"}
+    rows = [f"| {names[k]} | {band_name} | {signed(e[band]['old']['diff_mean'], 'pp')} ({ci_text({'seed_avg_diff_ci95': e[band]['old']['ci95']}, 'pp')}) | "
+            f"{signed(e[band]['new']['diff_mean'], 'pp')} ({ci_text({'seed_avg_diff_ci95': e[band]['new']['ci95']}, 'pp')}) |"
+            for k, e in r["impact_excess"].items() for band, band_name in (("lower", "real"), ("upper", "invented"))]
+    pm = a["primary"]["confusion_old_rows_new_cols"]["not_ship"]
+    sizes, taken = s["primary_stratum_sizes"], s["primary_taken"]
+    keep = "is at least" if r["kappa_passed"] else "is below"
+    return f"""## 6. Blind re-check of the labels, added after first results
+
+{a['all']['n']} crops were labelled a second time, shuffled and blind to the first verdict:
+{taken['ship']} of {sizes['ship']} `ship`, {taken['unsure']} of {sizes['unsure']} `unsure` and {taken['not_ship']} of {sizes['not_ship']} `not_ship`
+crops from the primary cells (stratified by first-pass verdict, equal allocation capped at each
+stratum's size, seed 1), plus all {s['originals_queue']} crops of the originals queue. The re-check showed the rule
+"{r['rule'].replace('RULE: ', '')}" on screen, looser than the first pass, which asked whether about half
+the box or more covered a vessel; disagreement below mixes that rule change with rater noise.
+
+| re-checked crops | n | Cohen's κ | raw agreement |
+|---|---|---|---|
+{agree}
+
+| first pass (rows) / re-check (columns) | ship | unsure | not_ship |
+|---|---|---|---|
+{conf}
+
+**Decision.** κ over all re-checked crops ({a['all']['kappa']:.2f}) {keep} the pre-set {r['min_kappa']}, so the
+first pass stays the main result and the tables below are a sensitivity check: what would change if
+the re-check verdicts replaced the first-pass ones (only re-checked crops change).
+
+| cell | unsure counted as | first pass (% tiles) | with re-check verdicts | change |
+|---|---|---|---|---|
+{chr(10).join(cells)}
+
+| excess over own originals | unsure counted as | first pass (95% CI) | with re-check verdicts (95% CI) |
+|---|---|---|---|
+{chr(10).join(rows)}
+
+The re-check covers every first-pass `ship` and `unsure` crop of the primary cells but only
+{taken['not_ship']} of {sizes['not_ship']} `not_ship` crops. In that sample {pm['ship'] + pm['unsure']} of {taken['not_ship']} `not_ship` crops became
+`ship` or `unsure`; the same rate in the other {sizes['not_ship'] - taken['not_ship']} would move invention further than these
+tables show."""
+
+
 def kappa_disagreements(inv):
     pairs = inv["_kappa"]["pairs"]
     diff = [p for p in pairs if p["v2"] != p["v1_pass1"]]
@@ -588,6 +642,9 @@ def kappa_disagreements(inv):
 def section_limitations(d):
     k, inv, queue = d["inv"]["_kappa"], d["inv"], d["queue"]
     n_diff, n_harsher = kappa_disagreements(inv)
+    rc = d.get("recheck")
+    recheck_note = (f"\n   A blind re-check of {rc['agreement']['all']['n']} crops under a looser rule (section 6, added after "
+                    f"first results) gives κ {rc['agreement']['all']['kappa']:.2f} against the first pass." if rc else "")
     real_v1 = d["v1_audit"]["verdict_tally"]["sr_ship"]
     return f"""## 5. Limitations
 
@@ -598,7 +655,7 @@ def section_limitations(d):
    slightly high. The labelling was blind to detector and image version, so this should not favour a
    condition. The {queue['n']} crops behind the excess analysis were labelled after the first results, from a
    queue holding only regions that M_SR or M_BIC drew on the original tiles ({queue['ship']} ship,
-   {queue['unsure']} unsure, {queue['not_ship']} not_ship), so that batch was not blind to the cell it came from.
+   {queue['unsure']} unsure, {queue['not_ship']} not_ship), so that batch was not blind to the cell it came from.{recheck_note}
 2. **One verdict per region.** A region's verdict is judged on its seed box and applies to every
    detection within probIoU 0.5 of it, so a member box can sit slightly differently from the box that was
    judged (the second panel of the gallery in section 3 is an example).
@@ -671,12 +728,14 @@ def main():
         sys.exit("the verdict in section 4 no longer matches the numbers; rewrite it first:\n  " + "\n  ".join(bad))
     make_figures(d["sa"], d["fire"], d["inv"], stats[POST])
     email = reviewer_summary(stats, d)
+    recheck = d["recheck"] = load("recheck.json") if (V2_RESULTS / "recheck.json").exists() else None
     parts = ["# v2 results: does training the detector on super-resolved images remove the invented ships?\n\n"
              "Generated by `v2/scripts/11_summary.py` from the files in `v2/results/`; do not edit by hand. "
              "Everything marked *added after first results* was decided after the pre-registered numbers were "
              "seen and is not a pre-registered endpoint.", tldr(stats, d),
              section_changes(stats, d), section_phase0(d), section_results(stats, d), section_verdict(stats, d),
-             section_limitations(d), f"## 6. Summary for the reviewer ({len(email.split())} words)\n\n{email}"]
+             section_limitations(d), *([section_recheck(recheck)] if recheck else []),
+             f"## {7 if recheck else 6}. Summary for the reviewer ({len(email.split())} words)\n\n{email}"]
     out = V2_RESULTS / "summary.md"
     out.write_text("\n\n".join(parts) + "\n")
     print(f"reviewer summary: {len(email.split())} words\n-> {out}\n-> {V2_RESULTS / 'figures'}")

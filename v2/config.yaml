@@ -71,3 +71,12 @@ audit:
   # invention in excess of that floor. `08_label.py --queue hr_floor` labels only these crops.
   queues:
     hr_floor: [[M_SR, hr], [M_BIC, hr]]
+  # added after first results: blind test-retest re-check (`08_label.py --recheck`). n_primary crops
+  # from priority_cells, stratified by previous verdict with equal allocation capped at each stratum's
+  # size, plus every crop of `queue`; shuffled, previous verdicts hidden, written to a separate file.
+  recheck:
+    seed: 1
+    n_primary: 150
+    queue: hr_floor
+    rule: "RULE: any visible hull inside the box = ship"
+    min_kappa: 0.6        # below this, 13_recheck.py stops (exit 2) and the write-up is not touched
